@@ -1,6 +1,6 @@
 # graph-builder
 
-This project is used to generate program graphs from C programs.
+This project is used to generate program graphs from C programs. These graphs are based on the programs AST which is then annotated with control and data flow edges.
 
 ## Dependencies
 This project relies on the Clang-AST. In order to build it, you need to install
