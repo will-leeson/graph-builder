@@ -39,6 +39,9 @@ public:
     }
 
     bool VisitStmt(Stmt *s){
+        if(isa<InitListExpr>(s)){
+            std::cout<<"Here it is:"<<s<<std::endl;
+        }
         const auto& parents = Context->getParents(*s);
         for(auto parent : parents){
             if(parent.get<Stmt>()){
@@ -85,6 +88,29 @@ public:
                 std::cout <<"(AST,("<<dPrime<<","<<dPrime->getDeclKindName()<<")"<<","<<"("<<s<<","<<s->getStmtClassName()<<"))"<<std::endl;
                 addToSet(dPrime);
                 addToSet(s);
+            }
+            else if(parent.get<TypeLoc>()){
+                std::cout<<"Please let this work"<<std::endl;
+                auto tPrime = parent.get<TypeLoc>();
+                std::string stringRep;
+                if(tPrime->getType().getTypePtr()->isArrayType()){
+                    if(isa<BinaryOperator>(s)){
+                        if(cast<BinaryOperator>(s)->isCommaOp()){
+                            stringRep = "CommaOperator";
+                        }
+                        else{
+                            stringRep =cast<BinaryOperator>(s)->getOpcodeStr().str();
+                        }
+                    }
+                    else if(isa<UnaryOperator>(s)){
+                        stringRep = cast<UnaryOperator>(s)->getOpcodeStr(cast<UnaryOperator>(s)->getOpcode()).str();
+                    }
+                    else{
+                        std::string conversion2(s->getStmtClassName());
+                        stringRep = conversion2;
+                    }
+                    std::cout<<"(AST,(typePlaceholder"<<placeholderVal<<",array)"<<")"<<","<<"("<<s<<","<<stringRep<<"))"<<std::endl;
+                }
             }
             else{
                 errs()<<"I'm not sure what this is: " <<parent.getNodeKind().asStringRef().str()<<"\n";
@@ -160,12 +186,21 @@ public:
                 addToSet(d);
             }
             else if(v->getType().getTypePtr()->isStructureType()){
-                std::cout<<"(AST,("<<d<<","<<d->getDeclKindName()<<")"<<","<<"(typePlaceholder"<<placeholderVal++<<",struct))"<<std::endl;
+                std::cout<<"(AST,("<<d<<","<<d->getDeclKindName()<<")"<<","<<"(typePlaceholder"<<placeholderVal<<",struct))"<<std::endl;
                 addToSet(d);
+                v->dump();
+                if(v->hasInit()){
+                    std::cout<<"(AST,(typePlaceholder"<<placeholderVal<<",array)"<<")"<<","<<"("<<v->getInit()<<","<<v->getInit()->getStmtClassName()<<"))"<<std::endl;
+                }
+                placeholderVal++;
             }
             else if(v->getType().getTypePtr()->isArrayType()){
-                std::cout<<"(AST,("<<d<<","<<d->getDeclKindName()<<")"<<","<<"(typePlaceholder"<<placeholderVal++<<",array))"<<std::endl;
+                std::cout<<"(AST,("<<d<<","<<d->getDeclKindName()<<")"<<","<<"(typePlaceholder"<<placeholderVal<<",array))"<<std::endl;
                 addToSet(d);
+                if(v->hasInit()){
+                    std::cout<<"(AST,(typePlaceholder"<<placeholderVal<<",array)"<<")"<<","<<"("<<v->getInit()<<","<<v->getInit()->getStmtClassName()<<"))"<<std::endl;
+                }
+                placeholderVal++;
             }
             else if(v->getType().getTypePtr()->isPointerType()){
                 std::cout<<"(AST,("<<d<<","<<d->getDeclKindName()<<")"<<","<<"(typePlaceholder"<<placeholderVal++<<",pointer))"<<std::endl;
@@ -353,7 +388,9 @@ public:
             bool isTakenCareOf = isa<IfStmt>(prevChild) || isa<BreakStmt>(prevChild) || WhileStmt::classof(prevChild) || 
                                  isa<ForStmt>(prevChild) || isa<DoStmt>(prevChild) || isa<ContinueStmt>(prevChild) ||
                                  SwitchStmt::classof(prevChild) || DefaultStmt::classof(prevChild);
-            if(isTakenCareOf){}
+            if(isTakenCareOf){
+                prevChild = child;
+            }
             else{
                 printCFGPair(prevChild, child);
                 prevChild = child;
