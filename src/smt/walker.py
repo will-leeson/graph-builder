@@ -17,6 +17,7 @@ class ASTBuilder(IdentityDagWalker):
         self.nodeCounter = None
         self.id_to_counter = None
         self.edges = None
+        self.edge_attr = None
         self.symbol_to_id = None
         self.constant_to_id = None
 
@@ -27,6 +28,7 @@ class ASTBuilder(IdentityDagWalker):
         self.nodeCounter = 0
         self.nodes = []
         self.edges = [[],[]]
+        self.edge_attr = []
         self.id_to_counter = dict()
         self.symbol_to_node = dict()
         self.constant_to_node = dict()
@@ -87,8 +89,14 @@ class ASTBuilder(IdentityDagWalker):
 
         for s in self._get_children(formula):
             # Add only if not memoized already
+            childId = self.get_node_counter(s, False)
             self.edges[0].append(parenId)
-            self.edges[1].append(self.get_node_counter(s, False))
+            self.edges[1].append(childId)
+            self.edge_attr.append(0)
+
+            self.edges[0].append(childId)
+            self.edges[1].append(parenId)
+            self.edge_attr.append(1)
 
             key = self._get_key(s, **kwargs)
             if key not in self.memoization:
@@ -115,12 +123,7 @@ def main(parser):
 
     nodes = astBuilder.nodes
     edges = astBuilder.edges
-    edge_attr = [0]*len(astBuilder.edges[0])
-
-    #Adding backwards edges
-    edges[0] = edges[0] + edges[1]
-    edges[1] = edges[1] + edges[0][:len(edges[1])]
-    edge_attr = edge_attr + [1]*len(astBuilder.edges[0])
+    edge_attr = astBuilder.edge_attr
 
     for symbol in astBuilder.symbol_to_node.values():
         if len(symbol) < 2:
@@ -137,6 +140,8 @@ def main(parser):
     nodes = np.array(nodes)
     edges = np.array(edges)
     edge_attr = np.array(edge_attr)
+
+    assert sum(edge_attr==0) == sum(edge_attr==1) 
 
     np.savez_compressed(file[:-5]+".npz", nodes=nodes, edges=edges, edge_attr=edge_attr)
 
