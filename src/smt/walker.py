@@ -6,7 +6,7 @@ import argparse
 import networkx as nx
 import numpy as np
 from pysmt.exceptions import PysmtTypeError
-from itertools import combinations
+
 import os
 
 class ASTBuilder(IdentityDagWalker):
@@ -35,8 +35,6 @@ class ASTBuilder(IdentityDagWalker):
         if self.invalidate_memoization:
             self.memoization.clear()
         
-        
-
         return res
 
     def add_node(self, formula):
@@ -101,9 +99,6 @@ def main(parser):
 
     file = args.file[0]
 
-    if os.path.exists(file[:-5]+".npz"):
-        exit()
-
     myParser = SmtLibParser()
     formula = None
     try:
@@ -122,6 +117,11 @@ def main(parser):
     edges = astBuilder.edges
     edge_attr = [0]*len(astBuilder.edges[0])
 
+    #Adding backwards edges
+    edges[0] = edges[0] + edges[1]
+    edges[1] = edges[1] + edges[0][:len(edges[1])]
+    edge_attr = edge_attr + [1]*len(astBuilder.edges[0])
+
     for symbol in astBuilder.symbol_to_node.values():
         if len(symbol) < 2:
             continue
@@ -132,7 +132,7 @@ def main(parser):
             #TO Uber symbol node
             edges[0].append(node)
             edges[1].append(len(nodes)-1)
-            edge_attr.append(1)
+            edge_attr.append(2)
 
     nodes = np.array(nodes)
     edges = np.array(edges)
