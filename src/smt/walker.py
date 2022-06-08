@@ -36,13 +36,13 @@ class ASTBuilder(IdentityDagWalker):
 
         if self.invalidate_memoization:
             self.memoization.clear()
-        
+
         return res
 
     def add_node(self, formula):
         node_rep = [0]*(len(ALL_TYPES)+1)
         node_rep[formula.node_type()] = 1
-        
+
         self.nodes.append(node_rep)
 
         assert self.nodeCounter == len(self.nodes)
@@ -78,7 +78,7 @@ class ASTBuilder(IdentityDagWalker):
             self.add_node(formula)
         else:
             value = self.id_to_counter[formula.node_id()]
-        
+
         return value
 
     def _push_with_children_to_stack(self, formula, **kwargs):
@@ -109,12 +109,12 @@ def main(parser):
 
     myParser = SmtLibParser()
     formula = None
-    try:
-        formula = myParser.get_script(open(file)).get_last_formula()
-    except PysmtTypeError:
-        badfile = open("badfile.txt", 'a')
-        badfile.write(file+"\n")
-        sys.exit(1)
+    # try:
+    formula = myParser.get_script(open(file)).get_last_formula()
+    # except PysmtTypeError:
+    #     badfile = open("badfile.txt", 'a')
+    #     badfile.write(file+"\n")
+    #     sys.exit(1)
 
     astBuilder = ASTBuilder()
 
@@ -129,7 +129,7 @@ def main(parser):
         if len(symbol) < 2:
             continue
         repr = [0]*(len(ALL_TYPES)+1)
-        repr[-1] = 1  
+        repr[-1] = 1
         nodes.append(repr)
         for node in symbol:
             #TO Uber symbol node
@@ -141,12 +141,13 @@ def main(parser):
     edges = np.array(edges)
     edge_attr = np.array(edge_attr)
 
-    assert sum(edge_attr==0) == sum(edge_attr==1) 
+    assert sum(edge_attr==0) == sum(edge_attr==1)
 
+    print("writing")
     np.savez_compressed(file[:-5]+".npz", nodes=nodes, edges=edges, edge_attr=edge_attr)
 
     # graph = nx.DiGraph()
-    
+
     # for i, node in enumerate(nodes):
     #     graph.add_node(i, label=op_to_str(np.where(node)[0][0]) if node[-1]!=1 else "UberSymbol")
 
@@ -157,7 +158,7 @@ def main(parser):
     # nx.drawing.nx_pydot.write_dot(graph, "thing.dot")
 
 
-    
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="SMT File -> Pytorch-Geometric Graph")
