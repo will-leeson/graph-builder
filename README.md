@@ -11,7 +11,7 @@ the following dependencies:
 * `clang-tools-11`
 * `libclang-11-dev`
 
-In most cases, these can be installed using your OS's package manager, e.g. sudo apt get `<Package>`
+In most cases, these can be installed using your OS's package manager, e.g. `sudo apt-get install <Package>`
 
 ## Build
 To build this project, clone this repository and follow these steps:
