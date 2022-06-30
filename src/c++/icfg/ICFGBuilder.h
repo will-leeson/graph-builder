@@ -16,7 +16,7 @@ using namespace clang::tooling;
 
 class ICFGBuilder : public RecursiveASTVisitor<ICFGBuilder>{
 public:
-    explicit ICFGBuilder(ASTContext *Context) : Context(Context) {}
+    explicit ICFGBuilder(ASTContext *Context, int attr) : Context(Context), g(attr) {}
     
     DynTypedNode findSuccessor(const Stmt *node);
     void findReferencesHelper(const Stmt *orig, const DynTypedNode node);
@@ -30,7 +30,6 @@ public:
     const Stmt* callExprHelper(DynTypedNode call);
 
     bool VisitCompoundStmt(CompoundStmt* cmpdStmt);
-    bool VisitCallExpr(CallExpr *call);
     bool VisitIfStmt(IfStmt *i);
     bool VisitSwitchStmt(SwitchStmt *s);
     bool VisitCaseStmt(CaseStmt *c);
@@ -44,9 +43,15 @@ public:
     bool VisitContinueStmt(ContinueStmt *c);
     bool VisitDecl(Decl *d);
 
+    graph getGraph();
+
 private:
     clang::ASTContext *Context;
     int stmtNumber = 0;
+    graph g;
+    std::map<int, std::pair<std::string, std::string>> references;
+    std::map<int, std::pair<std::string, std::string>> genKill;
+    std::map<std::pair<std::string, std::string>, int> edgeToStmtNum;
 };
 
 #endif

@@ -12,6 +12,8 @@
 
 #include <ast/ASTBuilder.h>
 #include <icfg/ICFGBuilder.h>
+#include <call/CallGraphBuilder.h>
+#include <data/DataFlowBuilder.h>
 #include <iostream>
 
 using namespace clang;
@@ -20,54 +22,56 @@ using namespace clang::tooling;
 
 class GraphBuilderConsumer : public clang::ASTConsumer {
 public:
-    explicit GraphBuilderConsumer(ASTContext *Context, SourceManager *Manager, bool buildAST, bool buildICFG, bool buildCall, bool buildData, int chainLength) : VisitorAST(Context), VisitorICFG(Context) /*, VisitorDFG(Context, Manager)*/, buildAST(buildAST), buildICFG(buildICFG), buildCall(buildCall), buildData(buildData), chainLength(chainLength) {}
+    explicit GraphBuilderConsumer(ASTContext *Context, SourceManager *Manager, bool buildAST, bool buildICFG, bool buildCall, bool buildData, int chainLength, std::string outFile) : VisitorAST(Context, 0), VisitorICFG(Context, 1), VisitorCallGraph(Context, 2), VisitorDataFlow(Context, Manager, 3), buildAST(buildAST), buildICFG(buildICFG), buildCall(buildCall), buildData(buildData), chainLength(chainLength), outFile(outFile) {}
     virtual void HandleTranslationUnit(clang::ASTContext &Context) override {
         // VisitorDFG.TraverseDecl(Context.getTranslationUnitDecl());
         if(buildAST){
+            std::cout<<"Building AST"<<std::endl;
             VisitorAST.TraverseDecl(Context.getTranslationUnitDecl());
-            std::cout<<"SERIALIZE"<<std::endl;
-            VisitorAST.serializeGraph();
-            std::cout<<"SERIALIZE"<<std::endl;
         }
-        if(buildICFG){
-            std::cout<<"To BUILD: ICFG"<<std::endl;
+        if(buildICFG || buildData){
+            std::cout<<"Building ICFG"<<std::endl;
             VisitorICFG.TraverseDecl(Context.getTranslationUnitDecl());
         }
         if(buildCall){
-            std::cout<<"To BUILD: Call"<<std::endl;
+            std::cout<<"Building Call"<<std::endl;
+            VisitorCallGraph.TraverseDecl(Context.getTranslationUnitDecl());
         }
         if(buildData){
-            std::cout<<"To BUILD: Data"<<std::endl;
+            std::cout<<"Building Data"<<std::endl;
+            VisitorDataFlow.TraverseDecl(Context.getTranslationUnitDecl());
         }
     }
 
 private:
     ASTBuilder VisitorAST;
     ICFGBuilder VisitorICFG;
+    CallGraphBuilder VisitorCallGraph;
+    DataFlowBuilder VisitorDataFlow;
     bool buildAST;
     bool buildICFG;
     bool buildCall;
     bool buildData;
     int chainLength;
+    std::string outFile;
 };
 
 class GraphBuilderAction : public clang::ASTFrontendAction {
 public:
-    GraphBuilderAction(bool ast, bool icfg, bool call, bool data, int chainLength) { 
+    GraphBuilderAction(bool ast, bool icfg, bool call, bool data, int chainLength, std::string outFile) { 
         buildAST= ast;
         buildICFG = icfg;
         buildCall = call;
         buildData = data;
         chainLength = chainLength;
+        outFile = outFile;
     };
 
     virtual std::unique_ptr<clang::ASTConsumer> CreateASTConsumer(
         clang::CompilerInstance &Compiler, llvm::StringRef InFile) override{
         return std::unique_ptr<clang::ASTConsumer>(
-            new GraphBuilderConsumer(&Compiler.getASTContext(), &Compiler.getSourceManager(), buildAST, buildICFG, buildCall, buildData, chainLength));
+            new GraphBuilderConsumer(&Compiler.getASTContext(), &Compiler.getSourceManager(), buildAST, buildICFG, buildCall, buildData, chainLength, outFile));
         }
-    
-    void setBuildAST(bool build){ buildAST = build; }
 
 private:
     bool buildAST;
@@ -75,15 +79,16 @@ private:
     bool buildCall;
     bool buildData;
     int chainLength;
+    std::string outFile;
 };
 
-std::unique_ptr<FrontendActionFactory> myNewFrontendActionFactory(bool ast, bool icfg, bool call, bool data, int chain) {
+std::unique_ptr<FrontendActionFactory> myNewFrontendActionFactory(bool ast, bool icfg, bool call, bool data, int chain, std::string outFile) {
   class SimpleFrontendActionFactory : public FrontendActionFactory {
     public:
-        SimpleFrontendActionFactory(bool ast, bool icfg, bool call, bool data, int chain) : mAST(ast), mICFG(icfg), mCall(call), mData(data), mChainLength(chain) {}
+        SimpleFrontendActionFactory(bool ast, bool icfg, bool call, bool data, int chain, std::string outFile) : mAST(ast), mICFG(icfg), mCall(call), mData(data), mChainLength(chain), mOutFile(outFile) {}
 
         std::unique_ptr<FrontendAction> create() override {
-            return std::make_unique<GraphBuilderAction>(mAST, mICFG, mCall, mData, mChainLength);
+            return std::make_unique<GraphBuilderAction>(mAST, mICFG, mCall, mData, mChainLength, mOutFile);
         }
 
     private:
@@ -92,10 +97,11 @@ std::unique_ptr<FrontendActionFactory> myNewFrontendActionFactory(bool ast, bool
         bool mCall;
         bool mData;
         int mChainLength;
+        std::string mOutFile;
   };
  
   return std::unique_ptr<FrontendActionFactory>(
-      new SimpleFrontendActionFactory(ast, icfg, call, data, chain));
+      new SimpleFrontendActionFactory(ast, icfg, call, data, chain, outFile));
 };
 
 
@@ -105,11 +111,12 @@ static cl::opt<bool> ICFG("icfg", cl::desc("Build ICFG (Intraprocedural Control 
 static cl::opt<bool> Call("call", cl::desc("Build Call graph"), cl::cat(MyToolCategory));
 static cl::opt<bool> Data("data", cl::desc("Build Data Dependency edges"), cl::cat(MyToolCategory));
 static cl::opt<unsigned int> chainLength("chain-length", cl::desc("Data dependency chain length (default 5)"), cl::cat(MyToolCategory), cl::init(5));
+static cl::opt<std::string> outFile("output-file", cl::desc("File to output graph to"), cl::cat(MyToolCategory));
 
 int main(int argc, const char **argv) {
     CommonOptionsParser OptionsParser(argc, argv, MyToolCategory);
     ClangTool Tool(OptionsParser.getCompilations(),
                     OptionsParser.getSourcePathList());
     
-    return Tool.run(myNewFrontendActionFactory(AST.getValue(), ICFG.getValue(), Call.getValue(), Data.getValue(), chainLength.getValue()).get());
+    return Tool.run(myNewFrontendActionFactory(AST.getValue(), ICFG.getValue(), Call.getValue(), Data.getValue(), chainLength.getValue(), outFile.getValue()).get());
 }

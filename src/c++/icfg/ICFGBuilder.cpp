@@ -1,5 +1,8 @@
 #include <ICFGBuilder.h>
 #include <iostream>
+#include <sstream>
+
+#include <utils/utils.h>
 
 /*
     * Takes in a Stmt representing the node we want to find the successor of
@@ -35,7 +38,7 @@ void ICFGBuilder::findReferencesHelper(const Stmt *orig, const DynTypedNode node
                 if(isa<DeclRefExpr>(child)){
                     const DeclRefExpr *d = cast<DeclRefExpr>(child);
                     if(isa<VarDecl>(d->getDecl())){   
-                        std::cout<<"(Ref,"<<stmtNumber<<","<<orig<<",("<<d<<","<<d->getDecl()<<"))"<<std::endl;
+                        references[stmtNumber] = std::pair<std::string, std::string>(ptrToStr(d),ptrToStr(d->getDecl()));
                     }
                 }
                 else{
@@ -68,13 +71,17 @@ void ICFGBuilder::findReferences(const Stmt *node){
 }
 
 void ICFGBuilder::printCFGPair(const Stmt* s1, const Stmt* s2){
-    std::cout<<"(CFG,"<<stmtNumber<<",("<<s1<<","<<s1->getStmtClassName()<<"),("<<s2<<","<<s2->getStmtClassName()<<"))"<<std::endl;
+    std::string s1Str = ptrToStr(s1);
+    std::string s2Str = ptrToStr(s2);
+
+    g.add_edge(s1Str, s2Str);
+    edgeToStmtNum[std::pair<std::string,std::string>(s1Str,s2Str)] = stmtNumber;
     if(isa<DeclStmt>(s1)){
         const DeclStmt *d = cast<DeclStmt>(s1);
         for(auto dPrime : d->decls()){
             if(isa<VarDecl>(dPrime)){
                 VarDecl *v = cast<VarDecl>(dPrime);
-                std::cout<<"(Gen/Kill,"<<stmtNumber<<",("<<d<<","<<v<<"))"<<std::endl;
+                genKill[stmtNumber] = std::pair<std::string, std::string>(ptrToStr(d),ptrToStr(v));
             }
         }
     }
@@ -84,7 +91,7 @@ void ICFGBuilder::printCFGPair(const Stmt* s1, const Stmt* s2){
             if(isa<DeclRefExpr>(b->getLHS())){
                 DeclRefExpr *d = cast<DeclRefExpr>(b->getLHS());
                 ValueDecl *dPrime = d->getDecl();
-                std::cout<<"(Gen/Kill,"<<stmtNumber<<",("<<d<<","<<dPrime<<"))"<<std::endl;
+                genKill[stmtNumber] = std::pair<std::string, std::string>(ptrToStr(d),ptrToStr(dPrime));
             }
         }
     }
@@ -95,7 +102,7 @@ void ICFGBuilder::printCFGPair(const Stmt* s1, const Stmt* s2){
                 if(isa<DeclRefExpr>(child)){
                     const DeclRefExpr *d = cast<DeclRefExpr>(child);
                     const ValueDecl *dPrime = d->getDecl();
-                    std::cout<<"(Gen/Kill,"<<stmtNumber<<",("<<d<<","<<dPrime<<")"<<std::endl;
+                    genKill[stmtNumber] = std::pair<std::string, std::string>(ptrToStr(d),ptrToStr(dPrime));
                 }
             }
         } 
@@ -105,8 +112,12 @@ void ICFGBuilder::printCFGPair(const Stmt* s1, const Stmt* s2){
 }
 
 void ICFGBuilder::printCFGPair(const Stmt* s, const Decl* d){
+    std::string sStr = ptrToStr(s);
+    std::string dStr = ptrToStr(d);
+
     if(d){
-        std::cout<<"(CFG,"<<stmtNumber<<",("<<s<<","<<s->getStmtClassName()<<"),("<<d<<","<<d->getDeclKindName()<<"))"<<std::endl;
+        g.add_edge(sStr, dStr);
+        edgeToStmtNum[std::pair<std::string,std::string>(sStr,dStr)] = stmtNumber;
     }
     else{
         return;
@@ -116,7 +127,7 @@ void ICFGBuilder::printCFGPair(const Stmt* s, const Decl* d){
         for(auto dPrime : d->decls()){
             if(isa<VarDecl>(dPrime)){
                 VarDecl *v = cast<VarDecl>(dPrime);
-                std::cout<<"(Gen/Kill,"<<stmtNumber<<",("<<d<<","<<v<<"))"<<std::endl;
+                genKill[stmtNumber] = std::pair<std::string, std::string>(ptrToStr(d),ptrToStr(v));
             }
         }
     }
@@ -126,7 +137,7 @@ void ICFGBuilder::printCFGPair(const Stmt* s, const Decl* d){
             if(isa<DeclRefExpr>(b->getLHS())){
                 DeclRefExpr *d = cast<DeclRefExpr>(b->getLHS());
                 ValueDecl *dPrime = d->getDecl();
-                std::cout<<"(Gen/Kill,"<<stmtNumber<<",("<<d<<","<<dPrime<<"))"<<std::endl;
+                genKill[stmtNumber] = std::pair<std::string, std::string>(ptrToStr(d),ptrToStr(dPrime));
             }
         }
     }
@@ -137,7 +148,7 @@ void ICFGBuilder::printCFGPair(const Stmt* s, const Decl* d){
                 if(isa<DeclRefExpr>(child)){
                     const DeclRefExpr *d = cast<DeclRefExpr>(child);
                     const ValueDecl *dPrime = d->getDecl();
-                    std::cout<<"(Gen/Kill,"<<stmtNumber<<",("<<d<<","<<dPrime<<")"<<std::endl;
+                    genKill[stmtNumber] = std::pair<std::string, std::string>(ptrToStr(d),ptrToStr(dPrime));
                 }
             }
         }
@@ -147,12 +158,20 @@ void ICFGBuilder::printCFGPair(const Stmt* s, const Decl* d){
 }
 
 void ICFGBuilder::printCFGPair(const Decl* d, const Stmt* s){
-    std::cout<<"(CFG,"<<stmtNumber<<",("<<d<<","<<d->getDeclKindName()<<"),("<<s<<","<<s->getStmtClassName()<<"))"<<std::endl;
+    std::string dStr = ptrToStr(d);
+    std::string sStr = ptrToStr(s);
+
+    g.add_edge(dStr, sStr);
+    edgeToStmtNum[std::pair<std::string,std::string>(dStr,sStr)] = stmtNumber;
     stmtNumber++;
 }
 
 void ICFGBuilder::printCFGPair(const Decl* d1, const Decl* d2){
-    std::cout<<"(CFG,"<<stmtNumber<<",("<<d1<<","<<d1->getDeclKindName()<<"),("<<d2<<","<<d2->getDeclKindName()<<"))"<<std::endl;
+    std::string d1Str = ptrToStr(d1);
+    std::string d2Str = ptrToStr(d2);
+
+    g.add_edge(d1Str, d2Str);
+    edgeToStmtNum[std::pair<std::string,std::string>(d1Str,d2Str)] = stmtNumber;
     stmtNumber++;
 }
 
@@ -218,15 +237,6 @@ const Stmt* ICFGBuilder::callExprHelper(DynTypedNode call){
     return NULL;
 }
 
-bool ICFGBuilder::VisitCallExpr(CallExpr *call){
-    //Call graph edges: From callsite to function and back
-    Decl* funDecl = call->getCalleeDecl();
-    if(funDecl){
-        printCFGPair(call, funDecl);
-        printCFGPair(funDecl, call);
-    }
-    return true;
-}
 
 bool ICFGBuilder::VisitIfStmt(IfStmt *i){
     Stmt* thenStmt = i->getThen();
@@ -247,7 +257,11 @@ bool ICFGBuilder::VisitIfStmt(IfStmt *i){
             printCFGPair(finalNode, successor.get<Stmt>());
         }
         else if(successor.get<FunctionDecl>()){
-            std::cout<<"(CFG,"<<stmtNumber<<",("<<finalNode<<","<<finalNode->getStmtClassName()<<"),("<<successor.get<FunctionDecl>()<<",FunctionExit))"<<std::endl;
+            std::string finalNodeStr = ptrToStr(finalNode);
+            std::string succesorStr = ptrToStr(successor.get<FunctionDecl>());
+
+            g.add_edge(finalNodeStr, succesorStr);
+            edgeToStmtNum[std::pair<std::string,std::string>(finalNodeStr,succesorStr)] = stmtNumber;
             findReferences(finalNode);
             stmtNumber++;
         }
@@ -270,7 +284,11 @@ bool ICFGBuilder::VisitIfStmt(IfStmt *i){
             printCFGPair(finalNode, successor.get<Stmt>());
         }
         else if(successor.get<FunctionDecl>()){
-            std::cout<<"(CFG,"<<stmtNumber<<",("<<finalNode<<","<<finalNode->getStmtClassName()<<"),("<<successor.get<FunctionDecl>()<<",FunctionExit))"<<std::endl;
+            std::string finalNodeStr = ptrToStr(finalNode);
+            std::string succesorStr = ptrToStr(successor.get<FunctionDecl>());
+
+            g.add_edge(finalNodeStr, succesorStr);
+            edgeToStmtNum[std::pair<std::string,std::string>(finalNodeStr,succesorStr)] = stmtNumber;
             findReferences(finalNode);
             stmtNumber++;
         }
@@ -283,7 +301,11 @@ bool ICFGBuilder::VisitIfStmt(IfStmt *i){
             printCFGPair(i, successor.get<Stmt>());
         }
         else if(successor.get<FunctionDecl>()){
-            std::cout<<"(CFG,"<<stmtNumber<<",("<<i<<","<<i->getStmtClassName()<<"),("<<successor.get<FunctionDecl>()<<",FunctionExit))"<<std::endl;
+            std::string iStr = ptrToStr(i);
+            std::string succesorStr = ptrToStr(successor.get<FunctionDecl>());
+
+            g.add_edge(iStr, succesorStr);
+            edgeToStmtNum[std::pair<std::string,std::string>(iStr,succesorStr)] = stmtNumber;
             findReferences(i);
             stmtNumber++;
         }
@@ -331,7 +353,11 @@ bool ICFGBuilder::VisitReturnStmt(ReturnStmt *r){
     }
 
     if(parent->get<FunctionDecl>()){
-        std::cout<<"(CFG,"<<stmtNumber<<",("<<r<<","<<r->getStmtClassName()<<"),("<<parent->get<FunctionDecl>()<<",FunctionExit))"<<std::endl;
+        std::string rStr = ptrToStr(r);
+        std::string parentStr = ptrToStr(parent->get<FunctionDecl>());
+
+        g.add_edge(rStr, parentStr);
+        edgeToStmtNum[std::pair<std::string,std::string>(rStr,parentStr)] = stmtNumber;
         findReferences(r);
         stmtNumber++;
     }
@@ -357,7 +383,11 @@ bool ICFGBuilder::VisitDefaultStmt(DefaultStmt *d){
         printCFGPair(finalNode, successor.get<Stmt>());
     }
     else if(successor.get<FunctionDecl>()){
-        std::cout<<"(CFG,"<<stmtNumber<<",("<<finalNode<<","<<finalNode->getStmtClassName()<<"),("<<successor.get<FunctionDecl>()<<",FunctionExit))"<<std::endl;
+        std::string finalNodeStr = ptrToStr(finalNode);
+        std::string succesorStr = ptrToStr(successor.get<FunctionDecl>());
+
+        g.add_edge(finalNodeStr, succesorStr);
+        edgeToStmtNum[std::pair<std::string,std::string>(finalNodeStr,succesorStr)] = stmtNumber;
         findReferences(finalNode);
         stmtNumber++;
     }
@@ -390,7 +420,11 @@ bool ICFGBuilder::VisitWhileStmt(WhileStmt *w){
         printCFGPair(w, successor.get<Stmt>());
     }
     else if(successor.get<FunctionDecl>()){
-        std::cout<<"(CFG,"<<stmtNumber<<",("<<w<<","<<w->getStmtClassName()<<"),("<<successor.get<FunctionDecl>()<<",FunctionExit))"<<std::endl;
+        std::string wStr = ptrToStr(w);
+        std::string succesorStr = ptrToStr(successor.get<FunctionDecl>());
+
+        g.add_edge(wStr, succesorStr);
+        edgeToStmtNum[std::pair<std::string,std::string>(wStr,succesorStr)] = stmtNumber;
         findReferences(w);
         stmtNumber++;
     }
@@ -423,7 +457,11 @@ bool ICFGBuilder::VisitDoStmt(DoStmt *d){
         printCFGPair(d, successor.get<Stmt>());
     }
     else if(successor.get<FunctionDecl>()){
-        std::cout<<"(CFG,"<<stmtNumber<<",("<<d<<","<<d->getStmtClassName()<<"),("<<successor.get<FunctionDecl>()<<",FunctionExit))"<<std::endl;
+        std::string dStr = ptrToStr(d);
+        std::string succesorStr = ptrToStr(successor.get<FunctionDecl>());
+
+        g.add_edge(dStr, succesorStr);
+        edgeToStmtNum[std::pair<std::string,std::string>(dStr,succesorStr)] = stmtNumber;
         findReferences(d);
         stmtNumber++;
     }
@@ -455,7 +493,11 @@ bool ICFGBuilder::VisitForStmt(ForStmt *f){
         printCFGPair(f, successor.get<Stmt>());
     }
     else if(successor.get<FunctionDecl>()){
-        std::cout<<"(CFG,"<<stmtNumber<<",("<<f<<","<<f->getStmtClassName()<<"),("<<successor.get<FunctionDecl>()<<",FunctionExit))"<<std::endl;
+        std::string fStr = ptrToStr(f);
+        std::string succesorStr = ptrToStr(successor.get<FunctionDecl>());
+
+        g.add_edge(fStr, succesorStr);
+        edgeToStmtNum[std::pair<std::string,std::string>(fStr,succesorStr)] = stmtNumber;
         findReferences(f);
         stmtNumber++;
     }
@@ -503,7 +545,11 @@ bool ICFGBuilder::VisitBreakStmt(BreakStmt *b){
             printCFGPair(b, successor.get<Stmt>());
         }
         else if(successor.get<FunctionDecl>()){
-            std::cout<<"(CFG,"<<stmtNumber<<",("<<b<<","<<b->getStmtClassName()<<"),("<<successor.get<FunctionDecl>()<<",FunctionExit))"<<std::endl;
+            std::string bStr = ptrToStr(b);
+            std::string succesorStr = ptrToStr(successor.get<FunctionDecl>());
+
+            g.add_edge(bStr, succesorStr);
+            edgeToStmtNum[std::pair<std::string,std::string>(bStr,succesorStr)] = stmtNumber;
             stmtNumber++;
         }
         else if(successor.get<Decl>()){
@@ -551,9 +597,15 @@ bool ICFGBuilder::VisitDecl(Decl *d){
             if(f->getNameInfo().getAsString() == "main"){
                 stringRep = "main";
             }
-            std::cout<<"(CFG,"<<stmtNumber<<",("<<f<<","<<stringRep<<"),("<<functionHead<<","<<functionHead->getStmtClassName()<<"))"<<std::endl;
+            std::string dStr = ptrToStr(d);
+            std::string functionHeadStr = ptrToStr(functionHead);
+
+            g.add_edge(dStr, functionHeadStr);
+            edgeToStmtNum[std::pair<std::string,std::string>(dStr,functionHeadStr)] = stmtNumber;
             stmtNumber++;
         }
     }
     return true;
 }
+
+graph ICFGBuilder::getGraph(){ return g; }

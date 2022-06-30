@@ -1,22 +1,7 @@
 #include <ASTBuilder.h>
 #include <sstream>  
 #include <iostream>
-
-std::string ptrToStr(const Stmt* ptr){
-    std::ostringstream oss;
-    oss << ptr;
-    std::string ptrStr(oss.str());
-
-    return ptrStr;
-}
-
-std::string ptrToStr(const Decl* ptr){
-    std::ostringstream oss;
-    oss << ptr;
-    std::string ptrStr(oss.str());
-
-    return ptrStr;
-}
+#include <vector>
 
 bool ASTBuilder::VisitStmt(Stmt *s){
     const auto& parents = Context->getParents(*s);
@@ -59,9 +44,9 @@ bool ASTBuilder::VisitStmt(Stmt *s){
             std::string sPrimeStr = ptrToStr(sPrime);
             std::string sStr = ptrToStr(s);
 
-            ast.add_node(sPrimeStr, parentStringRep);
-            ast.add_node(sStr, stringRep);
-            ast.add_edge(sPrimeStr, sStr);
+            g.add_node(sPrimeStr, parentStringRep);
+            g.add_node(sStr, stringRep);
+            g.add_edge(sPrimeStr, sStr);
         }
         else if(parent.get<Decl>()){
             auto dPrime = parent.get<Decl>();
@@ -69,9 +54,9 @@ bool ASTBuilder::VisitStmt(Stmt *s){
             std::string dPrimeStr = ptrToStr(dPrime);
             std::string sStr = ptrToStr(s);
 
-            ast.add_node(dPrimeStr, dPrime->getDeclKindName());
-            ast.add_node(sStr, s->getStmtClassName());
-            ast.add_edge(dPrimeStr, sStr);
+            g.add_node(dPrimeStr, dPrime->getDeclKindName());
+            g.add_node(sStr, s->getStmtClassName());
+            g.add_edge(dPrimeStr, sStr);
         }
         else if(parent.get<TypeLoc>()){
             auto tPrime = parent.get<TypeLoc>();
@@ -95,9 +80,9 @@ bool ASTBuilder::VisitStmt(Stmt *s){
 
                 std::string sStr = ptrToStr(s);
 
-                ast.add_node("typePlaceholder"+std::to_string(placeholderVal), "array");
-                ast.add_node(sStr, stringRep);
-                ast.add_edge("typePlaceholder"+std::to_string(placeholderVal), sStr);
+                g.add_node("typePlaceholder"+std::to_string(placeholderVal), "array");
+                g.add_node(sStr, stringRep);
+                g.add_edge("typePlaceholder"+std::to_string(placeholderVal), sStr);
                 placeholderVal++;
             }
         }
@@ -111,13 +96,13 @@ bool ASTBuilder::VisitStmt(Stmt *s){
         std::ostringstream oss;
         oss << s;
         std::string s1(oss.str());
-        if(d->getDecl()->isImplicit() || ast.nodePtrToNum.find(s1) == ast.nodePtrToNum.end()){
+        if(d->getDecl()->isImplicit() || g.nodePtrToNum.find(s1) == g.nodePtrToNum.end()){
             std::string sStr = ptrToStr(s);
             std::string dStr = ptrToStr(d->getDecl());             
             
-            ast.add_node(sStr, s->getStmtClassName());
-            ast.add_node(dStr, d->getDecl()->getDeclKindName());
-            ast.add_edge(sStr, dStr);
+            g.add_node(sStr, s->getStmtClassName());
+            g.add_node(dStr, d->getDecl()->getDeclKindName());
+            g.add_edge(sStr, dStr);
         }
     }
 
@@ -134,9 +119,9 @@ bool ASTBuilder::VisitDecl(Decl *d){
             std::string sPrimeStr = ptrToStr(sPrime);
             std::string dStr = ptrToStr(d);
 
-            ast.add_node(sPrimeStr, sPrime->getStmtClassName());
-            ast.add_node(dStr, d->getDeclKindName());
-            ast.add_edge(sPrimeStr, dStr);
+            g.add_node(sPrimeStr, sPrime->getStmtClassName());
+            g.add_node(dStr, d->getDeclKindName());
+            g.add_edge(sPrimeStr, dStr);
         }
         else if(parent.get<Decl>()){
             auto dPrime = parent.get<Decl>();
@@ -146,30 +131,30 @@ bool ASTBuilder::VisitDecl(Decl *d){
             if(isa<FunctionDecl>(d)){
                 FunctionDecl* f = cast<FunctionDecl>(d);
                 if(f->getNameInfo().getAsString().find(inputString) != std::string::npos){
-                    ast.add_node(dPrimeStr, dPrime->getDeclKindName());
-                    ast.add_node(dStr, "input " + f->getReturnType().getAsString());
-                    ast.add_edge(dPrimeStr, dStr);
+                    g.add_node(dPrimeStr, dPrime->getDeclKindName());
+                    g.add_node(dStr, "input " + f->getReturnType().getAsString());
+                    g.add_edge(dPrimeStr, dStr);
                 }
                 else if(f->isMain()){
-                    ast.add_node(dPrimeStr, dPrime->getDeclKindName());
-                    ast.add_node(dStr, "main");
-                    ast.add_edge(dPrimeStr, dStr);
+                    g.add_node(dPrimeStr, dPrime->getDeclKindName());
+                    g.add_node(dStr, "main");
+                    g.add_edge(dPrimeStr, dStr);
                 }
                 else{
-                    ast.add_node(dPrimeStr, dPrime->getDeclKindName());
-                    ast.add_node(dStr, d->getDeclKindName());
-                    ast.add_edge(dPrimeStr, dStr);
+                    g.add_node(dPrimeStr, dPrime->getDeclKindName());
+                    g.add_node(dStr, d->getDeclKindName());
+                    g.add_edge(dPrimeStr, dStr);
                 }
                 for(auto param : f->parameters()){
                     paramStr = ptrToStr(param);
-                    ast.add_node(paramStr, param->getDeclKindName());
-                    ast.add_edge(dStr, paramStr);
+                    g.add_node(paramStr, param->getDeclKindName());
+                    g.add_edge(dStr, paramStr);
                 }
             }
             else{
-                ast.add_node(dPrimeStr, dPrime->getDeclKindName());
-                ast.add_node(dStr, d->getDeclKindName());
-                ast.add_edge(dPrimeStr, dStr);
+                g.add_node(dPrimeStr, dPrime->getDeclKindName());
+                g.add_node(dStr, d->getDeclKindName());
+                g.add_edge(dPrimeStr, dStr);
             }
         }
     }
@@ -179,43 +164,43 @@ bool ASTBuilder::VisitDecl(Decl *d){
         std::string dStr = ptrToStr(d); 
 
         if(v->getType().getTypePtr()->isBuiltinType()){
-            ast.add_node(dStr, d->getDeclKindName());
-            ast.add_node("typePlaceholder" + std::to_string(placeholderVal), v->getType().getDesugaredType(*Context).getAsString());
-            ast.add_edge(dStr, "typePlaceholder" + std::to_string(placeholderVal));
+            g.add_node(dStr, d->getDeclKindName());
+            g.add_node("typePlaceholder" + std::to_string(placeholderVal), v->getType().getDesugaredType(*Context).getAsString());
+            g.add_edge(dStr, "typePlaceholder" + std::to_string(placeholderVal));
             placeholderVal++;
         }
         else if(v->getType().getTypePtr()->isStructureType()){
-            ast.add_node(dStr, d->getDeclKindName());
-            ast.add_node("typePlaceholder" + std::to_string(placeholderVal), "struct");
-            ast.add_edge(dStr, "typePlaceholder" + std::to_string(placeholderVal));
+            g.add_node(dStr, d->getDeclKindName());
+            g.add_node("typePlaceholder" + std::to_string(placeholderVal), "struct");
+            g.add_edge(dStr, "typePlaceholder" + std::to_string(placeholderVal));
             if(v->hasInit()){
                 std::string vStr = ptrToStr(v->getInit());
-                ast.add_node(vStr, v->getInit()->getStmtClassName());
-                ast.add_edge("typePlaceholder" + std::to_string(placeholderVal), vStr);
+                g.add_node(vStr, v->getInit()->getStmtClassName());
+                g.add_edge("typePlaceholder" + std::to_string(placeholderVal), vStr);
             }
             placeholderVal++;
         }
         else if(v->getType().getTypePtr()->isArrayType()){
-            ast.add_node(dStr, d->getDeclKindName());
-            ast.add_node("typePlaceholder" + std::to_string(placeholderVal), "array");
-            ast.add_edge(dStr, "typePlaceholder" + std::to_string(placeholderVal));
+            g.add_node(dStr, d->getDeclKindName());
+            g.add_node("typePlaceholder" + std::to_string(placeholderVal), "array");
+            g.add_edge(dStr, "typePlaceholder" + std::to_string(placeholderVal));
             if(v->hasInit()){
                 std::string vStr = ptrToStr(v->getInit());
-                ast.add_node(vStr, v->getInit()->getStmtClassName());
-                ast.add_edge("typePlaceholder" + std::to_string(placeholderVal),vStr);
+                g.add_node(vStr, v->getInit()->getStmtClassName());
+                g.add_edge("typePlaceholder" + std::to_string(placeholderVal),vStr);
             }
             placeholderVal++;
         }
         else if(v->getType().getTypePtr()->isPointerType()){
-            ast.add_node(dStr, d->getDeclKindName());
-            ast.add_node("typePlaceholder" + std::to_string(placeholderVal), "pointer");
-            ast.add_edge(dStr, "typePlaceholder" + std::to_string(placeholderVal));
+            g.add_node(dStr, d->getDeclKindName());
+            g.add_node("typePlaceholder" + std::to_string(placeholderVal), "pointer");
+            g.add_edge(dStr, "typePlaceholder" + std::to_string(placeholderVal));
             placeholderVal++;
         }
         else{
-            ast.add_node(dStr, d->getDeclKindName());
-            ast.add_node("typePlaceholder" + std::to_string(placeholderVal), "otherType");
-            ast.add_edge(dStr, "typePlaceholder" + std::to_string(placeholderVal));
+            g.add_node(dStr, d->getDeclKindName());
+            g.add_node("typePlaceholder" + std::to_string(placeholderVal), "otherType");
+            g.add_edge(dStr, "typePlaceholder" + std::to_string(placeholderVal));
             placeholderVal++;
         }
     }
@@ -223,11 +208,4 @@ bool ASTBuilder::VisitDecl(Decl *d){
     return true;
 }
 
-void ASTBuilder::serializeGraph(){
-    for(auto node : ast.get_nodes()){
-        std::cout<<node<<std::endl;
-    }
-    for(auto [from, to] : zip(ast.get_outEdges(),ast.get_inEdges())){
-        std::cout<<"From:"<<from<<" To:"<< to<<std::endl;
-    }
-}
+graph ASTBuilder::getGraph() {return g; }

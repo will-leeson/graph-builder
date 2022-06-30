@@ -1,5 +1,5 @@
-#ifndef AST_BUILDER_H
-#define AST_BUILDER_H
+#ifndef CALL_GRAPH_BUILDER_H
+#define CALL_GRAPH_BUILDER_H
 
 #include "clang/AST/ASTConsumer.h"
 #include "clang/AST/RecursiveASTVisitor.h"
@@ -14,20 +14,17 @@ using namespace clang;
 using namespace llvm;
 using namespace clang::tooling;
 
-class ASTBuilder : public RecursiveASTVisitor<ASTBuilder>{
+class CallGraphBuilder : public RecursiveASTVisitor<CallGraphBuilder>{
 public:
-    explicit ASTBuilder(ASTContext *Context, int attr) : Context(Context), g(attr) {}
+    explicit CallGraphBuilder(ASTContext *Context, int attr) : Context(Context), g(attr) {}
 
-    bool VisitStmt(Stmt *s);
-
-    bool VisitDecl(Decl *d);
+    bool VisitCallExpr(CallExpr *call);
 
     graph getGraph();
 
 private:
     clang::ASTContext *Context;
-    int placeholderVal = 0;
     graph g;
 };
 
-#endif // AST_BUILDER_H
+#endif
