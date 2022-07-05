@@ -14,6 +14,7 @@
 #include <icfg/ICFGBuilder.h>
 #include <call/CallGraphBuilder.h>
 #include <data/DataFlowBuilder.h>
+#include <utils/utils.h>
 #include <iostream>
 
 using namespace clang;
@@ -22,25 +23,43 @@ using namespace clang::tooling;
 
 class GraphBuilderConsumer : public clang::ASTConsumer {
 public:
-    explicit GraphBuilderConsumer(ASTContext *Context, SourceManager *Manager, bool buildAST, bool buildICFG, bool buildCall, bool buildData, int chainLength, std::string outFile) : VisitorAST(Context, 0), VisitorICFG(Context, 1), VisitorCallGraph(Context, 2), VisitorDataFlow(Context, Manager, 3), buildAST(buildAST), buildICFG(buildICFG), buildCall(buildCall), buildData(buildData), chainLength(chainLength), outFile(outFile) {}
+    explicit GraphBuilderConsumer(ASTContext *Context, SourceManager *Manager, bool buildAST, bool buildICFG, bool buildCall, bool buildData, int chainLength, std::string outFile) : VisitorAST(Context, 0), VisitorICFG(Context, 1), VisitorCallGraph(Context, 2), VisitorDataFlow(Context, Manager, 3), buildAST(buildAST), buildICFG(buildICFG), buildCall(buildCall), buildData(buildData), chainLength(chainLength), outFile(outFile) { }
+    
     virtual void HandleTranslationUnit(clang::ASTContext &Context) override {
-        // VisitorDFG.TraverseDecl(Context.getTranslationUnitDecl());
+        graph g;
+
         if(buildAST){
             std::cout<<"Building AST"<<std::endl;
             VisitorAST.TraverseDecl(Context.getTranslationUnitDecl());
+
+            g.mergeGraph(VisitorAST.getGraph());
         }
         if(buildICFG || buildData){
             std::cout<<"Building ICFG"<<std::endl;
             VisitorICFG.TraverseDecl(Context.getTranslationUnitDecl());
+            g.mergeGraph(VisitorICFG.getGraph());
+            if(buildData){
+                std::cout<<"Building Data"<<std::endl;
+                VisitorDataFlow.TraverseDecl(Context.getTranslationUnitDecl());
+
+                VisitorDataFlow.setGenKill(VisitorICFG.getGenKill());
+                VisitorDataFlow.setReferences(VisitorICFG.getReferences());
+                VisitorDataFlow.setICFG(VisitorICFG.getGraph());
+                VisitorDataFlow.setMain(VisitorICFG.getMain());
+
+                VisitorDataFlow.reachingDefinitions(chainLength);
+
+                g.mergeGraph(VisitorDataFlow.getGraph());
+            }
         }
         if(buildCall){
             std::cout<<"Building Call"<<std::endl;
             VisitorCallGraph.TraverseDecl(Context.getTranslationUnitDecl());
+            g.mergeGraph(VisitorCallGraph.getGraph());
         }
-        if(buildData){
-            std::cout<<"Building Data"<<std::endl;
-            VisitorDataFlow.TraverseDecl(Context.getTranslationUnitDecl());
-        }
+
+        // g.serializeGraph();
+        // g.printGraph();
     }
 
 private:
@@ -63,14 +82,14 @@ public:
         buildICFG = icfg;
         buildCall = call;
         buildData = data;
-        chainLength = chainLength;
+        mchainLength = chainLength;
         outFile = outFile;
     };
 
     virtual std::unique_ptr<clang::ASTConsumer> CreateASTConsumer(
         clang::CompilerInstance &Compiler, llvm::StringRef InFile) override{
         return std::unique_ptr<clang::ASTConsumer>(
-            new GraphBuilderConsumer(&Compiler.getASTContext(), &Compiler.getSourceManager(), buildAST, buildICFG, buildCall, buildData, chainLength, outFile));
+            new GraphBuilderConsumer(&Compiler.getASTContext(), &Compiler.getSourceManager(), buildAST, buildICFG, buildCall, buildData, mchainLength, outFile));
         }
 
 private:
@@ -78,7 +97,7 @@ private:
     bool buildICFG;
     bool buildCall;
     bool buildData;
-    int chainLength;
+    int mchainLength;
     std::string outFile;
 };
 
@@ -110,7 +129,7 @@ static cl::opt<bool> AST("ast", cl::desc("Build AST"), cl::cat(MyToolCategory));
 static cl::opt<bool> ICFG("icfg", cl::desc("Build ICFG (Intraprocedural Control Flow Graph)"), cl::cat(MyToolCategory));
 static cl::opt<bool> Call("call", cl::desc("Build Call graph"), cl::cat(MyToolCategory));
 static cl::opt<bool> Data("data", cl::desc("Build Data Dependency edges"), cl::cat(MyToolCategory));
-static cl::opt<unsigned int> chainLength("chain-length", cl::desc("Data dependency chain length (default 5)"), cl::cat(MyToolCategory), cl::init(5));
+static cl::opt<unsigned int> chainLength("chain-length", cl::desc("Data dependency chain length (default 0)"), cl::cat(MyToolCategory), cl::init(0));
 static cl::opt<std::string> outFile("output-file", cl::desc("File to output graph to"), cl::cat(MyToolCategory));
 
 int main(int argc, const char **argv) {

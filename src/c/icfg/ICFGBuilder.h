@@ -33,7 +33,6 @@ public:
     bool VisitIfStmt(IfStmt *i);
     bool VisitSwitchStmt(SwitchStmt *s);
     bool VisitCaseStmt(CaseStmt *c);
-    bool VisitReturnStmt(ReturnStmt *r);
     bool VisitDefaultStmt(DefaultStmt *d);
     bool VisitWhileStmt(WhileStmt *w);
     bool VisitDoStmt(DoStmt *d);
@@ -42,15 +41,19 @@ public:
     bool VisitBreakStmt(BreakStmt *b);
     bool VisitContinueStmt(ContinueStmt *c);
     bool VisitDecl(Decl *d);
-
     graph getGraph();
+    std::map<std::string, std::string> getReferences();
+    std::map<std::string, std::pair<std::string, std::string>> getGenKill();
+    std::map<std::pair<std::string, std::string>, int> getEdgeToStmtNum();
+    std::string getMain();
 
 private:
     clang::ASTContext *Context;
     int stmtNumber = 0;
     graph g;
-    std::map<int, std::pair<std::string, std::string>> references;
-    std::map<int, std::pair<std::string, std::string>> genKill;
+    std::string main;
+    std::map<std::string, std::string> references;
+    std::map<std::string, std::pair<std::string, std::string>> genKill;
     std::map<std::pair<std::string, std::string>, int> edgeToStmtNum;
 };
 

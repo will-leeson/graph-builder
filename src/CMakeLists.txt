@@ -17,3 +17,7 @@ target_link_libraries(graph-builder
   clangTooling
   clangASTMatchers
 )
+
+install(TARGETS graph-builder DESTINATION bin)
+
+add_subdirectory(c)

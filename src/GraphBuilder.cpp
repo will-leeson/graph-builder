@@ -439,6 +439,7 @@ public:
                 return callExprHelper(parent);
             }
         }
+        return NULL;
     }
 
     bool VisitCallExpr(CallExpr *call){
@@ -967,11 +968,12 @@ public:
         }
 };
 
+static cl::OptionCategory MyToolCategory("Specific Options");
+static cl::opt<bool> AST("ast", cl::desc("Build AST"), cl::cat(MyToolCategory));
 
-static cl::OptionCategory MyToolCategory("My tool options");
 int main(int argc, const char **argv) {
-  CommonOptionsParser OptionsParser(argc, argv, MyToolCategory);
-  ClangTool Tool(OptionsParser.getCompilations(),
-                 OptionsParser.getSourcePathList());
-  return Tool.run(newFrontendActionFactory<GraphBuilderAction>().get());
+    CommonOptionsParser OptionsParser(argc, argv, MyToolCategory);
+    ClangTool Tool(OptionsParser.getCompilations(),
+                    OptionsParser.getSourcePathList());
+    return Tool.run(newFrontendActionFactory<GraphBuilderAction>().get());
 }

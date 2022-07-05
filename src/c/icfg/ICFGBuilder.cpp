@@ -38,7 +38,7 @@ void ICFGBuilder::findReferencesHelper(const Stmt *orig, const DynTypedNode node
                 if(isa<DeclRefExpr>(child)){
                     const DeclRefExpr *d = cast<DeclRefExpr>(child);
                     if(isa<VarDecl>(d->getDecl())){   
-                        references[stmtNumber] = std::pair<std::string, std::string>(ptrToStr(d),ptrToStr(d->getDecl()));
+                        references[ptrToStr(orig)] = ptrToStr(d->getDecl());
                     }
                 }
                 else{
@@ -81,7 +81,7 @@ void ICFGBuilder::printCFGPair(const Stmt* s1, const Stmt* s2){
         for(auto dPrime : d->decls()){
             if(isa<VarDecl>(dPrime)){
                 VarDecl *v = cast<VarDecl>(dPrime);
-                genKill[stmtNumber] = std::pair<std::string, std::string>(ptrToStr(d),ptrToStr(v));
+                genKill[ptrToStr(s1)] = {ptrToStr(d),ptrToStr(v)};
             }
         }
     }
@@ -91,7 +91,7 @@ void ICFGBuilder::printCFGPair(const Stmt* s1, const Stmt* s2){
             if(isa<DeclRefExpr>(b->getLHS())){
                 DeclRefExpr *d = cast<DeclRefExpr>(b->getLHS());
                 ValueDecl *dPrime = d->getDecl();
-                genKill[stmtNumber] = std::pair<std::string, std::string>(ptrToStr(d),ptrToStr(dPrime));
+                genKill[ptrToStr(s1)] = {ptrToStr(d),ptrToStr(dPrime)};
             }
         }
     }
@@ -102,7 +102,8 @@ void ICFGBuilder::printCFGPair(const Stmt* s1, const Stmt* s2){
                 if(isa<DeclRefExpr>(child)){
                     const DeclRefExpr *d = cast<DeclRefExpr>(child);
                     const ValueDecl *dPrime = d->getDecl();
-                    genKill[stmtNumber] = std::pair<std::string, std::string>(ptrToStr(d),ptrToStr(dPrime));
+                    //genKill[stmtNumber] = std::pair<std::string, std::string>(ptrToStr(d),ptrToStr(dPrime));
+                    genKill[ptrToStr(s1)] ={ptrToStr(d), ptrToStr(dPrime)};
                 }
             }
         } 
@@ -127,7 +128,7 @@ void ICFGBuilder::printCFGPair(const Stmt* s, const Decl* d){
         for(auto dPrime : d->decls()){
             if(isa<VarDecl>(dPrime)){
                 VarDecl *v = cast<VarDecl>(dPrime);
-                genKill[stmtNumber] = std::pair<std::string, std::string>(ptrToStr(d),ptrToStr(v));
+                genKill[ptrToStr(s)] = {ptrToStr(d),ptrToStr(v)};
             }
         }
     }
@@ -137,7 +138,7 @@ void ICFGBuilder::printCFGPair(const Stmt* s, const Decl* d){
             if(isa<DeclRefExpr>(b->getLHS())){
                 DeclRefExpr *d = cast<DeclRefExpr>(b->getLHS());
                 ValueDecl *dPrime = d->getDecl();
-                genKill[stmtNumber] = std::pair<std::string, std::string>(ptrToStr(d),ptrToStr(dPrime));
+                genKill[ptrToStr(s)] ={ptrToStr(d),ptrToStr(dPrime)};
             }
         }
     }
@@ -148,7 +149,7 @@ void ICFGBuilder::printCFGPair(const Stmt* s, const Decl* d){
                 if(isa<DeclRefExpr>(child)){
                     const DeclRefExpr *d = cast<DeclRefExpr>(child);
                     const ValueDecl *dPrime = d->getDecl();
-                    genKill[stmtNumber] = std::pair<std::string, std::string>(ptrToStr(d),ptrToStr(dPrime));
+                    genKill[ptrToStr(s)] = {ptrToStr(d),ptrToStr(dPrime)};
                 }
             }
         }
@@ -276,7 +277,7 @@ bool ICFGBuilder::VisitIfStmt(IfStmt *i){
 
         auto finalNode = elseStmt;
         if(isa<CompoundStmt>(elseStmt)){
-            for(auto elseChild : thenStmt->children()){
+            for(auto elseChild : elseStmt->children()){
                 finalNode = elseChild;
             }
         }
@@ -331,37 +332,6 @@ bool ICFGBuilder::VisitCaseStmt(CaseStmt *c){
     auto body = c->getSubStmt();
 
     printCFGPair(c, body);
-    return true;
-}
-
-bool ICFGBuilder::VisitReturnStmt(ReturnStmt *r){
-    bool foundFunction = false;
-    bool stopCondition = false;
-
-    auto parent = Context->getParents(*r).begin();
-    while(!stopCondition){
-        foundFunction = parent->get<FunctionDecl>();
-        stopCondition = (foundFunction || parent->get<TranslationUnitDecl>());
-        if(stopCondition) break;
-
-        if(parent->get<Stmt>()){
-            parent = Context->getParents(*(parent->get<Stmt>())).begin();
-        }
-        else if(parent->get<Decl>()){
-            parent = Context->getParents(*(parent->get<Decl>())).begin();
-        }
-    }
-
-    if(parent->get<FunctionDecl>()){
-        std::string rStr = ptrToStr(r);
-        std::string parentStr = ptrToStr(parent->get<FunctionDecl>());
-
-        g.add_edge(rStr, parentStr);
-        edgeToStmtNum[std::pair<std::string,std::string>(rStr,parentStr)] = stmtNumber;
-        findReferences(r);
-        stmtNumber++;
-    }
-
     return true;
 }
 
@@ -596,6 +566,7 @@ bool ICFGBuilder::VisitDecl(Decl *d){
             auto functionHead = f->getBody();
             if(f->getNameInfo().getAsString() == "main"){
                 stringRep = "main";
+                main = ptrToStr(f);
             }
             std::string dStr = ptrToStr(d);
             std::string functionHeadStr = ptrToStr(functionHead);
@@ -607,5 +578,15 @@ bool ICFGBuilder::VisitDecl(Decl *d){
     }
     return true;
 }
+
+std::map<std::string, std::string> ICFGBuilder::getReferences(){ return references; }
+std::map<std::string, std::pair<std::string, std::string>> ICFGBuilder::getGenKill(){
+    return genKill;
+}
+std::map<std::pair<std::string, std::string>, int> ICFGBuilder::getEdgeToStmtNum(){
+    return edgeToStmtNum;
+}
+std::string ICFGBuilder::getMain(){ return main; }
+
 
 graph ICFGBuilder::getGraph(){ return g; }

@@ -13,3 +13,4 @@ bool CallGraphBuilder::VisitCallExpr(CallExpr *call){
     return true;
 }
 
+graph CallGraphBuilder::getGraph() { return g; }
