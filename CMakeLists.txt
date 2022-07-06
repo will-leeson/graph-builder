@@ -2,6 +2,8 @@ CMAKE_MINIMUM_REQUIRED(VERSION 3.19)
 
 project(graph-builder)
 
+set (CMAKE_CXX_STANDARD 17)
+
 # LLVM.
 find_package(LLVM 11.1 REQUIRED CONFIG)
 include_directories(${LLVM_INCLUDE_DIRS})
