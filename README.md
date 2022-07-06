@@ -20,6 +20,9 @@ To build this project, clone this repository and follow these steps:
 3. `cd build`
 4. `cmake ..`
 5. `make`
+6. `make install` (optional)
 
 ## Usage
-The graph-builder can be invoked as `./build/src/graph-builder [file.c]` or if you add it to your path, you can simply invoke it using `graph-builder [file.c]` from anywhere
+The C language graph builder can be invoked from the home directory as such `./build/src/c/app/c-graph-builder [file.c] [-flags]`. If you run step 6, it can be invoked simply via `c-graph-builder [file.c] [-flags]`
+
+To see what graphs can be built and options, run `c-graph-builder -h`
