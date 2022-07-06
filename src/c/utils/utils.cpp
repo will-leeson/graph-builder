@@ -1,6 +1,7 @@
 #include <utils.h>
 #include <algorithm>
 #include <sstream>
+#include <fstream>
 #include <iostream>
 
 void graph::add_node(std::string ptrStr, std::string nodeType){
@@ -30,10 +31,18 @@ std::vector<int> graph::get_edgeAttrs() { return edgeAttrs; }
 
 void graph::set_nodes(std::vector<std::string> x){ nodes = x; }
 
+std::map<std::string, int> graph::getNodePtrToNum(){ return nodePtrToNum; }
+
+void graph::setNodePtrToNum(std::map<std::string, int> x){ nodePtrToNum = x; }
+
+std::map<std::string, std::string> graph::getNodePtrToType(){ return nodePtrToType; }
+
+void graph::setNodePtrToType(std::map<std::string, std::string> x){ nodePtrToType = x; }
+
 void graph::serializeGraph(){
     std::vector <std::string> x(nodeSet.size());
     for(auto node : nodeSet){
-        x[nodePtrToNum[node]] =  nodePtrToType[node];
+        x[nodePtrToNum[node]] = nodePtrToType[node];
     }
     nodes = x;
 
@@ -62,6 +71,39 @@ void graph::printGraph(){
     for(auto attr : edgeAttrs){
         std::cout<<attr<<std::endl;
     }
+}
+
+void graph::toFile(std::string fileName){
+    std::ofstream outFile;
+    outFile.open(fileName);
+    outFile << "{\"nodes\": [";
+    int i=0;
+    for(; i<nodes.size()-1; i++){
+        outFile << "\""<<nodes[i]<<"\"" << ", ";
+    }
+    outFile << "\""<< nodes[i] << "\"],";
+
+    outFile <<" \"outEdges\": [";
+    i=0;
+    for(; i<outEdgesSerial.size()-1; i++){
+        outFile << outEdgesSerial[i] << ", ";
+    }
+    outFile << outEdgesSerial[i] << "],";
+
+    outFile <<" \"inEdges\": [";
+    i=0;
+    for(; i<inEdgesSerial.size()-1; i++){
+        outFile << inEdgesSerial[i] << ", ";
+    }
+    outFile << inEdgesSerial[i] << "],";
+
+    outFile <<" \"edgeAttr\": [";
+    i=0;
+    for(; i<edgeAttrs.size()-1; i++){
+        outFile << edgeAttrs[i] << ", ";
+    }
+    outFile << edgeAttrs[i] << "]}";
+
 }
 
 void graph::mergeGraph(graph g){

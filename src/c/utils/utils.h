@@ -18,16 +18,25 @@ public:
     void add_edge(std::string from, std::string to, int attr);
 
     std::vector<std::string> get_nodes();
+    void set_nodes(std::vector<std::string> x);
+
     std::set<std::string> get_nodeSet();
     std::vector<std::string> get_outEdges();
     std::vector<std::string> get_inEdges();
     std::vector<int> get_edgeAttrs();
-    std::map<std::string, int> nodePtrToNum;
-    std::map<std::string, std::string> nodePtrToType;
-    void set_nodes(std::vector<std::string> x);
+    
+    std::map<std::string, int> getNodePtrToNum();
+    void setNodePtrToNum(std::map<std::string, int> x);
+    std::map<std::string, std::string> getNodePtrToType();
+    void setNodePtrToType(std::map<std::string, std::string> x);
+    
+    void mergeGraph(graph g);
+
     void serializeGraph();
     void printGraph();
-    void mergeGraph(graph g);
+    void toFile(std::string fileName);
+
+
 private:
     std::set<std::string> nodeSet;
     std::vector<std::string> outEdges;
@@ -37,6 +46,9 @@ private:
     std::vector<int> outEdgesSerial;
     std::vector<int> inEdgesSerial;
     std::vector<int> edgeAttrs;
+
+    std::map<std::string, int> nodePtrToNum;
+    std::map<std::string, std::string> nodePtrToType;
     int attrVal;
 };
 

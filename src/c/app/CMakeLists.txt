@@ -24,5 +24,4 @@ target_link_libraries(c-graph-builder
   data
 )
 
-
 install(TARGETS c-graph-builder DESTINATION bin)

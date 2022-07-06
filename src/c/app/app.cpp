@@ -23,24 +23,25 @@ using namespace clang::tooling;
 
 class GraphBuilderConsumer : public clang::ASTConsumer {
 public:
-    explicit GraphBuilderConsumer(ASTContext *Context, SourceManager *Manager, bool buildAST, bool buildICFG, bool buildCall, bool buildData, int chainLength, std::string outFile) : VisitorAST(Context, 0), VisitorICFG(Context, 1), VisitorCallGraph(Context, 2), VisitorDataFlow(Context, Manager, 3), buildAST(buildAST), buildICFG(buildICFG), buildCall(buildCall), buildData(buildData), chainLength(chainLength), outFile(outFile) { }
+    explicit GraphBuilderConsumer(ASTContext *Context, SourceManager *Manager, bool buildAST, bool buildICFG, bool buildCall, bool buildData, int chainLength, std::string outFile, bool print) : VisitorAST(Context, 0), VisitorICFG(Context, 1), VisitorCallGraph(Context, 2), VisitorDataFlow(Context, Manager, 3), buildAST(buildAST), buildICFG(buildICFG), buildCall(buildCall), buildData(buildData), chainLength(chainLength), outFile(outFile), print(print) { }
     
     virtual void HandleTranslationUnit(clang::ASTContext &Context) override {
-        graph g;
+        auto unit =  Context.getTranslationUnitDecl();
+        std::cout<<"Building AST"<<std::endl;
+        VisitorAST.TraverseDecl(unit);
+        graph g = VisitorAST.getGraph();
 
-        if(buildAST){
-            std::cout<<"Building AST"<<std::endl;
-            VisitorAST.TraverseDecl(Context.getTranslationUnitDecl());
-
-            g.mergeGraph(VisitorAST.getGraph());
-        }
+        //The AST is the basis of the graph. Even if we don't take its edges and nodes, we need some way to map nodes to their types and edges to nodes
+        // g.setNodePtrToNum(VisitorAST.getGraph().getNodePtrToNum());
         if(buildICFG || buildData){
             std::cout<<"Building ICFG"<<std::endl;
-            VisitorICFG.TraverseDecl(Context.getTranslationUnitDecl());
-            g.mergeGraph(VisitorICFG.getGraph());
+            VisitorICFG.TraverseDecl(unit);
+            if(buildICFG){
+                g.mergeGraph(VisitorICFG.getGraph());
+            }
             if(buildData){
                 std::cout<<"Building Data"<<std::endl;
-                VisitorDataFlow.TraverseDecl(Context.getTranslationUnitDecl());
+                VisitorDataFlow.TraverseDecl(unit);
 
                 VisitorDataFlow.setGenKill(VisitorICFG.getGenKill());
                 VisitorDataFlow.setReferences(VisitorICFG.getReferences());
@@ -54,12 +55,17 @@ public:
         }
         if(buildCall){
             std::cout<<"Building Call"<<std::endl;
-            VisitorCallGraph.TraverseDecl(Context.getTranslationUnitDecl());
+            VisitorCallGraph.TraverseDecl(unit);
             g.mergeGraph(VisitorCallGraph.getGraph());
         }
 
-        // g.serializeGraph();
-        // g.printGraph();
+        g.serializeGraph();
+        if(outFile.size()>0){
+            g.toFile(outFile);
+        }
+        if(print){
+            g.printGraph();
+        }
     }
 
 private:
@@ -73,23 +79,25 @@ private:
     bool buildData;
     int chainLength;
     std::string outFile;
+    bool print;
 };
 
 class GraphBuilderAction : public clang::ASTFrontendAction {
 public:
-    GraphBuilderAction(bool ast, bool icfg, bool call, bool data, int chainLength, std::string outFile) { 
+    GraphBuilderAction(bool ast, bool icfg, bool call, bool data, int chainLength, std::string outFile, bool print) { 
         buildAST= ast;
         buildICFG = icfg;
         buildCall = call;
         buildData = data;
         mchainLength = chainLength;
-        outFile = outFile;
+        moutFile = outFile;
+        mPrint = print;
     };
 
     virtual std::unique_ptr<clang::ASTConsumer> CreateASTConsumer(
         clang::CompilerInstance &Compiler, llvm::StringRef InFile) override{
         return std::unique_ptr<clang::ASTConsumer>(
-            new GraphBuilderConsumer(&Compiler.getASTContext(), &Compiler.getSourceManager(), buildAST, buildICFG, buildCall, buildData, mchainLength, outFile));
+            new GraphBuilderConsumer(&Compiler.getASTContext(), &Compiler.getSourceManager(), buildAST, buildICFG, buildCall, buildData, mchainLength, moutFile, mPrint));
         }
 
 private:
@@ -98,16 +106,17 @@ private:
     bool buildCall;
     bool buildData;
     int mchainLength;
-    std::string outFile;
+    std::string moutFile;
+    bool mPrint;
 };
 
-std::unique_ptr<FrontendActionFactory> myNewFrontendActionFactory(bool ast, bool icfg, bool call, bool data, int chain, std::string outFile) {
+std::unique_ptr<FrontendActionFactory> myNewFrontendActionFactory(bool ast, bool icfg, bool call, bool data, int chain, std::string outFile, bool print) {
   class SimpleFrontendActionFactory : public FrontendActionFactory {
     public:
-        SimpleFrontendActionFactory(bool ast, bool icfg, bool call, bool data, int chain, std::string outFile) : mAST(ast), mICFG(icfg), mCall(call), mData(data), mChainLength(chain), mOutFile(outFile) {}
+        SimpleFrontendActionFactory(bool ast, bool icfg, bool call, bool data, int chain, std::string outFile, bool print) : mAST(ast), mICFG(icfg), mCall(call), mData(data), mChainLength(chain), mOutFile(outFile), mPrint(print) {}
 
         std::unique_ptr<FrontendAction> create() override {
-            return std::make_unique<GraphBuilderAction>(mAST, mICFG, mCall, mData, mChainLength, mOutFile);
+            return std::make_unique<GraphBuilderAction>(mAST, mICFG, mCall, mData, mChainLength, mOutFile, mPrint);
         }
 
     private:
@@ -117,10 +126,11 @@ std::unique_ptr<FrontendActionFactory> myNewFrontendActionFactory(bool ast, bool
         bool mData;
         int mChainLength;
         std::string mOutFile;
+        bool mPrint;
   };
  
   return std::unique_ptr<FrontendActionFactory>(
-      new SimpleFrontendActionFactory(ast, icfg, call, data, chain, outFile));
+      new SimpleFrontendActionFactory(ast, icfg, call, data, chain, outFile, print));
 };
 
 
@@ -131,11 +141,12 @@ static cl::opt<bool> Call("call", cl::desc("Build Call graph"), cl::cat(MyToolCa
 static cl::opt<bool> Data("data", cl::desc("Build Data Dependency edges"), cl::cat(MyToolCategory));
 static cl::opt<unsigned int> chainLength("chain-length", cl::desc("Data dependency chain length (default 0)"), cl::cat(MyToolCategory), cl::init(0));
 static cl::opt<std::string> outFile("output-file", cl::desc("File to output graph to"), cl::cat(MyToolCategory));
+static cl::opt<bool> print("print", cl::desc("Print to stdout"), cl::cat(MyToolCategory));
 
 int main(int argc, const char **argv) {
     CommonOptionsParser OptionsParser(argc, argv, MyToolCategory);
     ClangTool Tool(OptionsParser.getCompilations(),
                     OptionsParser.getSourcePathList());
     
-    return Tool.run(myNewFrontendActionFactory(AST.getValue(), ICFG.getValue(), Call.getValue(), Data.getValue(), chainLength.getValue(), outFile.getValue()).get());
+    return Tool.run(myNewFrontendActionFactory(AST.getValue(), ICFG.getValue(), Call.getValue(), Data.getValue(), chainLength.getValue(), outFile.getValue(), print.getValue()).get());
 }

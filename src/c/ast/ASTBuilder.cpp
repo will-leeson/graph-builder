@@ -96,7 +96,7 @@ bool ASTBuilder::VisitStmt(Stmt *s){
         std::ostringstream oss;
         oss << s;
         std::string s1(oss.str());
-        if(d->getDecl()->isImplicit() || g.nodePtrToNum.find(s1) == g.nodePtrToNum.end()){
+        if(d->getDecl()->isImplicit() || g.getNodePtrToNum().find(s1) == g.getNodePtrToNum().end()){
             std::string sStr = ptrToStr(s);
             std::string dStr = ptrToStr(d->getDecl());             
             
