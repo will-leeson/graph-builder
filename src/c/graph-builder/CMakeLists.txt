@@ -2,14 +2,14 @@ set(LLVM_LINK_COMPONENTS
   Support
 )
 
-add_executable(c-graph-builder app.cpp)
+add_library(graph-builder graph-builder.h)
 
-target_include_directories(c-graph-builder 
+target_include_directories(graph-builder 
     PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}
     PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/..
 )
 
-target_link_libraries(c-graph-builder
+target_link_libraries(graph-builder
   PRIVATE
   clangAST
   clangBasic
@@ -22,7 +22,6 @@ target_link_libraries(c-graph-builder
   icfg
   call
   data
-  graph-builder
 )
 
-install(TARGETS c-graph-builder DESTINATION bin)
+install(TARGETS graph-builder DESTINATION bin)
