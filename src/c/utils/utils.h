@@ -24,6 +24,10 @@ public:
     std::vector<std::string> get_outEdges();
     std::vector<std::string> get_inEdges();
     std::vector<int> get_edgeAttrs();
+
+    std::vector<int> get_nodesSerial();
+    std::vector<int> get_outEdgesSerial();
+    std::vector<int> get_inEdgesSerial();
     
     std::map<std::string, int> getNodePtrToNum();
     void setNodePtrToNum(std::map<std::string, int> x);
@@ -43,6 +47,7 @@ private:
     std::vector<std::string> inEdges;
 
     std::vector<std::string> nodes;
+    std::vector<int> nodesSerial;
     std::vector<int> outEdgesSerial;
     std::vector<int> inEdgesSerial;
     std::vector<int> edgeAttrs;

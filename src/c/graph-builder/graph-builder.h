@@ -29,7 +29,7 @@ public:
         auto unit =  Context.getTranslationUnitDecl();
         std::cout<<"Building AST"<<std::endl;
         VisitorAST.TraverseDecl(unit);
-        graph localG = VisitorAST.getGraph();
+        g->mergeGraph(VisitorAST.getGraph());
 
         //The AST is the basis of the graph. Even if we don't take its edges and nodes, we need some way to map nodes to their types and edges to nodes
         // g.setNodePtrToNum(VisitorAST.getGraph().getNodePtrToNum());
@@ -37,7 +37,7 @@ public:
             std::cout<<"Building ICFG"<<std::endl;
             VisitorICFG.TraverseDecl(unit);
             if(buildICFG){
-                localG.mergeGraph(VisitorICFG.getGraph());
+                g->mergeGraph(VisitorICFG.getGraph());
             }
             if(buildData){
                 std::cout<<"Building Data"<<std::endl;
@@ -50,23 +50,22 @@ public:
 
                 VisitorDataFlow.reachingDefinitions(chainLength);
 
-                localG.mergeGraph(VisitorDataFlow.getGraph());
+                g->mergeGraph(VisitorDataFlow.getGraph());
             }
         }
         if(buildCall){
             std::cout<<"Building Call"<<std::endl;
             VisitorCallGraph.TraverseDecl(unit);
-            localG.mergeGraph(VisitorCallGraph.getGraph());
+            g->mergeGraph(VisitorCallGraph.getGraph());
         }
 
-        localG.serializeGraph();
+        g->serializeGraph();
         if(outFile.size()>0){
-            localG.toFile(outFile);
+            g->toFile(outFile);
         }
         if(print){
-            localG.printGraph();
+            g->printGraph();
         }
-        g = &localG;
     }
 private:
     ASTBuilder VisitorAST;
