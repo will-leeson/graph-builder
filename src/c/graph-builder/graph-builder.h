@@ -27,20 +27,17 @@ public:
     
     virtual void HandleTranslationUnit(clang::ASTContext &Context) override {
         auto unit =  Context.getTranslationUnitDecl();
-        std::cout<<"Building AST"<<std::endl;
         VisitorAST.TraverseDecl(unit);
         g->mergeGraph(VisitorAST.getGraph());
 
         //The AST is the basis of the graph. Even if we don't take its edges and nodes, we need some way to map nodes to their types and edges to nodes
         // g.setNodePtrToNum(VisitorAST.getGraph().getNodePtrToNum());
         if(buildICFG || buildData){
-            std::cout<<"Building ICFG"<<std::endl;
             VisitorICFG.TraverseDecl(unit);
             if(buildICFG){
                 g->mergeGraph(VisitorICFG.getGraph());
             }
             if(buildData){
-                std::cout<<"Building Data"<<std::endl;
                 VisitorDataFlow.TraverseDecl(unit);
 
                 VisitorDataFlow.setGenKill(VisitorICFG.getGenKill());
@@ -54,7 +51,6 @@ public:
             }
         }
         if(buildCall){
-            std::cout<<"Building Call"<<std::endl;
             VisitorCallGraph.TraverseDecl(unit);
             g->mergeGraph(VisitorCallGraph.getGraph());
         }
