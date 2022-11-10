@@ -33,5 +33,8 @@ int main(int argc, const char **argv) {
     ClangTool Tool(OptionsParser.getCompilations(),
                     OptionsParser.getSourcePathList());
     
-    return Tool.run(GraphBuilderActionFactory(AST.getValue(), ICFG.getValue(), Call.getValue(), Data.getValue(), chainLength.getValue(), outFile.getValue(), print.getValue()).get());
+    graph *g;
+    int result = Tool.run(GraphBuilderActionFactory(AST.getValue(), ICFG.getValue(), Call.getValue(), Data.getValue(), chainLength.getValue(), outFile.getValue(), print.getValue(), g).get());
+
+    return result;
 }
