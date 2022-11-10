@@ -42,7 +42,6 @@ std::map<std::string, std::string> graph::getNodePtrToType(){ return nodePtrToTy
 void graph::setNodePtrToType(std::map<std::string, std::string> x){ nodePtrToType = x; }
 
 void graph::serializeGraph(){
-    std::cout<<"Serial Time"<<std::endl;
     std::vector <std::string> x(nodeSet.size());
     std::vector <int> y(nodeSet.size());
     for(auto node : nodeSet){
@@ -63,7 +62,6 @@ void graph::serializeGraph(){
     for(auto edge : outEdges){
         outEdgesSerial.push_back(nodePtrToNum[edge]);
     }
-    std::cout<<"Serial Time Over"<<std::endl;
 }
 
 void graph::printGraph(){
@@ -119,7 +117,6 @@ void graph::toFile(std::string fileName){
 }
 
 void graph::mergeGraph(graph g){
-    std::cout<<"Merging"<<std::endl;
     for(auto node : g.nodeSet){
         add_node(node, g.nodePtrToType[node]);
     }
