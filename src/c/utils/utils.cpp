@@ -51,7 +51,7 @@ void graph::serializeGraph(){
             y[nodePtrToNum[node]] = tokenToNum[nodePtrToType[node]];    
         }
         else{
-            y[nodePtrToNum[node]] = nodeSet.size();
+            y[nodePtrToNum[node]] = tokenToNum.size();
         }
     }
     nodes = x;
