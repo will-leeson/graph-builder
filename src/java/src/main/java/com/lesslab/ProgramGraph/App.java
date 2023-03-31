@@ -1,7 +1,7 @@
 package com.lesslab.ProgramGraph;
 
 import org.apache.commons.cli.CommandLine;
-import org.apache.commons.cli.ParseException; 
+import org.apache.commons.cli.ParseException;
 
 public class App 
 {
@@ -17,10 +17,30 @@ public class App
             p.printStackTrace();
             System.exit(1);
         }
-        GraphBuilder x = new GraphBuilder(cmd.getOptionValue("p"));
+
+        boolean bbcfg, scfg, expr, call;
+        if(cmd.hasOption("all")){
+            bbcfg = true;
+            scfg = true;
+            expr = true;
+            call = true;
+        }
+        else{
+            bbcfg = cmd.hasOption("bbcfg");
+            scfg = cmd.hasOption("scfg");
+            expr = cmd.hasOption("expr");
+            call = cmd.hasOption("call");
+        }
+
+
+
+        GraphBuilder builder = new GraphBuilder(cmd.getOptionValue("p"), bbcfg, scfg,expr,call);
 
         // x.BuildGraph(cmd.getOptionValue('c'));
 
-        x.getStmtGraphs();
+        builder.buildGraphs();
+
+        builder.toJson(cmd.getOptionValue("out"));
+        // x.buildCallGraphs();
     }
 }

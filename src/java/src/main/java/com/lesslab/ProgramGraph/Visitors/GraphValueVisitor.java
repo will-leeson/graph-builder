@@ -11,6 +11,7 @@ import sootup.core.types.Type;
 import sootup.core.jimple.basic.EquivTo;
 import sootup.core.jimple.basic.Immediate;
 import sootup.core.jimple.basic.Local;
+import sootup.core.jimple.basic.StmtPositionInfo;
 import sootup.core.jimple.basic.Value;
 import sootup.core.jimple.common.expr.*;
 import sootup.core.jimple.common.ref.*;
@@ -19,6 +20,7 @@ import sootup.core.jimple.common.constant.*;
 public class GraphValueVisitor implements ValueVisitor  {
     private LinkedList<Integer> inEdges = new LinkedList<Integer>();
     private LinkedList<Integer> outEdges = new LinkedList<Integer>();
+    private LinkedList<String> edgeTypes = new LinkedList<String>();
 
     private Map<Integer,String> hashToStringRep = new HashMap<Integer, String>();
 
@@ -30,6 +32,10 @@ public class GraphValueVisitor implements ValueVisitor  {
         return this.outEdges;
     }
 
+    public LinkedList<String> getEdgeTypes(){
+        return this.edgeTypes;
+    }
+
     public Map<Integer,String> getHashToString(){
         return this.hashToStringRep;
     }
@@ -37,6 +43,7 @@ public class GraphValueVisitor implements ValueVisitor  {
     private void addEdge(EquivTo from, EquivTo to){
         outEdges.add(from.hashCode());
         inEdges.add(to.hashCode());
+        edgeTypes.add("VALUE");
 
         if(!hashToStringRep.containsKey(from.hashCode())){
             hashToStringRep.put(from.hashCode(), from.getClass().getSimpleName().toString());
@@ -46,15 +53,16 @@ public class GraphValueVisitor implements ValueVisitor  {
         }
     }
 
-    private void addEdge(EquivTo from, Type to){
-        outEdges.add(from.hashCode());
-        inEdges.add(to.hashCode());
+    private void addEdge(EquivTo object, Type type){
+        outEdges.add(type.hashCode());
+        inEdges.add(object.hashCode());
+        edgeTypes.add("TYPE");
 
-        if(!hashToStringRep.containsKey(from.hashCode())){
-            hashToStringRep.put(from.hashCode(), from.getClass().getSimpleName().toString());
+        if(!hashToStringRep.containsKey(type.hashCode())){
+            hashToStringRep.put(type.hashCode(), type.getClass().getSimpleName().toString());
         }
-        if(!hashToStringRep.containsKey(to.hashCode())){
-            hashToStringRep.put(to.hashCode(), to.getClass().getSimpleName().toString());
+        if(!hashToStringRep.containsKey(object.hashCode())){
+            hashToStringRep.put(object.hashCode(), object.getClass().getSimpleName().toString());
         }
     }
 
@@ -290,15 +298,25 @@ public class GraphValueVisitor implements ValueVisitor  {
         }
     }
   
-    public void defaultCaseExpr(Expr expr){}
+    public void defaultCaseExpr(Expr expr){
+        addEdge(expr, expr.getType());
+    }
 
-    public void caseStaticFieldRef(JStaticFieldRef ref){}
+    public void caseStaticFieldRef(JStaticFieldRef ref){
+        addEdge(ref, ref.getType());
+    }
 
-    public void caseInstanceFieldRef(JInstanceFieldRef ref){}
+    public void caseInstanceFieldRef(JInstanceFieldRef ref){
+        addEdge(ref, ref.getType());
+    }
 
-    public void caseArrayRef(JArrayRef ref){}
+    public void caseArrayRef(JArrayRef ref){
+        addEdge(ref, ref.getIndex().getType());
+    }
 
-    public void caseParameterRef(JParameterRef ref){}
+    public void caseParameterRef(JParameterRef ref){
+        addEdge(ref, ref.getType());
+    }
 
     public void caseCaughtExceptionRef(JCaughtExceptionRef ref){}
 
@@ -306,31 +324,57 @@ public class GraphValueVisitor implements ValueVisitor  {
 
     public void defaultCaseRef(Ref ref){}
 
-    public void caseBooleanConstant(@Nonnull BooleanConstant constant){}
+    public void caseBooleanConstant(@Nonnull BooleanConstant constant){
+        addEdge(constant, constant.getType());
+    }
 
-    public void caseDoubleConstant(@Nonnull DoubleConstant constant){}
+    public void caseDoubleConstant(@Nonnull DoubleConstant constant){
+        addEdge(constant, constant.getType());
+    }
 
-    public void caseFloatConstant(@Nonnull FloatConstant constant){}
+    public void caseFloatConstant(@Nonnull FloatConstant constant){
+        addEdge(constant, constant.getType());
+    }
 
-    public void caseIntConstant(@Nonnull IntConstant constant){}
+    public void caseIntConstant(@Nonnull IntConstant constant){
+        addEdge(constant, constant.getType());
+    }
 
-    public void caseLongConstant(@Nonnull LongConstant constant){}
+    public void caseLongConstant(@Nonnull LongConstant constant){
+        addEdge(constant, constant.getType());
+    }
 
-    public void caseNullConstant(@Nonnull NullConstant constant){}
+    public void caseNullConstant(@Nonnull NullConstant constant){
+        addEdge(constant, constant.getType());
+    }
 
-    public void caseStringConstant(@Nonnull StringConstant constant){}
+    public void caseStringConstant(@Nonnull StringConstant constant){
+        addEdge(constant, constant.getType());
+    }
 
-    public void caseEnumConstant(@Nonnull EnumConstant constant){}
+    public void caseEnumConstant(@Nonnull EnumConstant constant){
+        addEdge(constant, constant.getType());
+    }
 
-    public void caseClassConstant(@Nonnull ClassConstant constant){}
+    public void caseClassConstant(@Nonnull ClassConstant constant){
+        addEdge(constant, constant.getType());
+    }
 
-    public void caseMethodHandle(@Nonnull MethodHandle handle){}
+    public void caseMethodHandle(@Nonnull MethodHandle handle){
+        addEdge(handle, handle.getType());
+    }
 
-    public void caseMethodType(@Nonnull MethodType methodType){}
+    public void caseMethodType(@Nonnull MethodType methodType){
+        addEdge(methodType, methodType.getReturnType());
+    }
 
     public void defaultCaseConstant(@Nonnull Constant constant){}
 
-    public void caseLocal(@Nonnull Local local){}
+    public void caseLocal(@Nonnull Local local){
+        addEdge(local, local.getType());
+    }
 
-    public void defaultCaseValue(@Nonnull Value v){}
+    public void defaultCaseValue(@Nonnull Value v){
+        addEdge(v, v.getType());
+    }
 }

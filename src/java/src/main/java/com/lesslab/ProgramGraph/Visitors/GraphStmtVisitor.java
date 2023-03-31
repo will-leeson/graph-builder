@@ -13,6 +13,7 @@ import sootup.core.jimple.javabytecode.stmt.*;
 public class GraphStmtVisitor implements StmtVisitor{
     private LinkedList<Integer> inEdges = new LinkedList<Integer>();
     private LinkedList<Integer> outEdges = new LinkedList<Integer>();
+    private LinkedList<String> edgeTypes = new LinkedList<String>();
 
     private GraphValueVisitor valueVisitor = new GraphValueVisitor();
 
@@ -24,6 +25,9 @@ public class GraphStmtVisitor implements StmtVisitor{
 
     public LinkedList<Integer> getOutEdges(){
         return this.outEdges;
+    }
+    public LinkedList<String> getEdgeTypes(){
+        return this.edgeTypes;
     }
 
     public Map<Integer,String> getHashToString(){
@@ -37,6 +41,7 @@ public class GraphStmtVisitor implements StmtVisitor{
     private void addEdge(EquivTo from, EquivTo to){
         outEdges.add(from.hashCode());
         inEdges.add(to.hashCode());
+        edgeTypes.add("EXPR");
 
         if(!hashToStringRep.containsKey(from.hashCode())){
             hashToStringRep.put(from.hashCode(), from.getClass().getSimpleName().toString());
