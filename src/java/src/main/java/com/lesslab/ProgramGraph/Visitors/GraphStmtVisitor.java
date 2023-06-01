@@ -7,6 +7,7 @@ import java.util.LinkedList;
 import java.util.Map;
 
 import sootup.core.jimple.basic.EquivTo;
+import sootup.core.jimple.basic.Value;
 import sootup.core.jimple.common.stmt.*;
 import sootup.core.jimple.javabytecode.stmt.*;
 
@@ -38,10 +39,13 @@ public class GraphStmtVisitor implements StmtVisitor{
         return this.valueVisitor;
     }
 
-    private void addEdge(EquivTo from, EquivTo to){
+    private void addEdge(EquivTo from, EquivTo to, String edgeType){
         outEdges.add(from.hashCode());
         inEdges.add(to.hashCode());
-        edgeTypes.add("EXPR");
+        edgeTypes.add(edgeType);
+
+        assert(outEdges.size() == inEdges.size());
+        assert(outEdges.size() == edgeTypes.size());
 
         if(!hashToStringRep.containsKey(from.hashCode())){
             hashToStringRep.put(from.hashCode(), from.getClass().getSimpleName().toString());
@@ -52,21 +56,33 @@ public class GraphStmtVisitor implements StmtVisitor{
     }
 
     public void caseAssignStmt(JAssignStmt<?, ?> stmt){
-        addEdge(stmt, stmt.getLeftOp());
-        addEdge(stmt, stmt.getRightOp());
+        addEdge(stmt, stmt.getLeftOp(),"EXPR");
+        addEdge(stmt, stmt.getRightOp(),"EXPR");
+        addEdge(stmt.getLeftOp(),stmt,"EXPR");
+        addEdge(stmt.getRightOp(),stmt,"EXPR");
+
+        addEdge(stmt.getRightOp(), stmt.getLeftOp(), "DATA");
+
+        for(Value use : stmt.getLeftOp().getUses()){
+            addEdge(stmt.getLeftOp(), use, "DATA");
+        }
 
         stmt.getRightOp().accept(valueVisitor);
     }
 
     public void caseIdentityStmt(JIdentityStmt<?> stmt){
-        addEdge(stmt, stmt.getLeftOp());
-        addEdge(stmt, stmt.getRightOp());
+        addEdge(stmt, stmt.getLeftOp(),"EXPR");
+        addEdge(stmt, stmt.getRightOp(),"EXPR");
+
+        addEdge(stmt.getLeftOp(), stmt,"EXPR");
+        addEdge(stmt.getRightOp(), stmt,"EXPR");
 
         stmt.getRightOp().accept(valueVisitor);
     }
 
     public void caseIfStmt(JIfStmt stmt){
-        addEdge(stmt, stmt.getCondition());
+        addEdge(stmt, stmt.getCondition(),"EXPR");
+        addEdge(stmt.getCondition(), stmt,"EXPR");
         stmt.getCondition().accept(valueVisitor);
     }
 

@@ -18,23 +18,27 @@ public class App
             System.exit(1);
         }
 
-        boolean bbcfg, scfg, expr, call;
+        boolean bbcfg, scfg, cdg, expr, call,data;
         if(cmd.hasOption("all")){
             bbcfg = true;
             scfg = true;
+            cdg = true;
             expr = true;
             call = true;
+            data = true;
         }
         else{
             bbcfg = cmd.hasOption("bbcfg");
             scfg = cmd.hasOption("scfg");
+            cdg = cmd.hasOption("cdg");
             expr = cmd.hasOption("expr");
             call = cmd.hasOption("call");
+            data = cmd.hasOption("data");
         }
 
 
 
-        GraphBuilder builder = new GraphBuilder(cmd.getOptionValue("p"), bbcfg, scfg,expr,call);
+        GraphBuilder builder = new GraphBuilder(cmd.getOptionValue("p"), bbcfg, scfg, cdg, expr,call,data);
 
         // x.BuildGraph(cmd.getOptionValue('c'));
 

@@ -11,7 +11,6 @@ import sootup.core.types.Type;
 import sootup.core.jimple.basic.EquivTo;
 import sootup.core.jimple.basic.Immediate;
 import sootup.core.jimple.basic.Local;
-import sootup.core.jimple.basic.StmtPositionInfo;
 import sootup.core.jimple.basic.Value;
 import sootup.core.jimple.common.expr.*;
 import sootup.core.jimple.common.ref.*;
@@ -44,6 +43,9 @@ public class GraphValueVisitor implements ValueVisitor  {
         outEdges.add(from.hashCode());
         inEdges.add(to.hashCode());
         edgeTypes.add("VALUE");
+        outEdges.add(to.hashCode());
+        inEdges.add(from.hashCode());
+        edgeTypes.add("VALUE");
 
         if(!hashToStringRep.containsKey(from.hashCode())){
             hashToStringRep.put(from.hashCode(), from.getClass().getSimpleName().toString());
@@ -56,6 +58,9 @@ public class GraphValueVisitor implements ValueVisitor  {
     private void addEdge(EquivTo object, Type type){
         outEdges.add(type.hashCode());
         inEdges.add(object.hashCode());
+        edgeTypes.add("TYPE");
+        outEdges.add(object.hashCode());
+        inEdges.add(type.hashCode());
         edgeTypes.add("TYPE");
 
         if(!hashToStringRep.containsKey(type.hashCode())){

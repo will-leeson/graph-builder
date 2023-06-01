@@ -16,7 +16,7 @@ import sootup.core.views.View;
 
 public class LocalCallGraph extends ClassHierarchyAnalysisAlgorithm{
     public LocalCallGraph(@Nonnull View<? extends SootClass<?>> view, @Nonnull TypeHierarchy typeHierarchy){
-        super(view, typeHierarchy);
+        super(view);
     }
 
     public Stream<MethodSignature> resolveLocalCall(SootMethod sourceMethod, AbstractInvokeExpr invokeExpr){
