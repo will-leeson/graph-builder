@@ -14,6 +14,7 @@ import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -36,7 +37,10 @@ import sootup.core.inputlocation.AnalysisInputLocation;
 import sootup.core.inputlocation.ClassLoadingOptions;
 import sootup.core.jimple.basic.EquivTo;
 import sootup.core.jimple.basic.StmtPositionInfo;
+import sootup.core.jimple.common.stmt.JReturnStmt;
+import sootup.core.jimple.common.stmt.JReturnVoidStmt;
 import sootup.core.jimple.common.stmt.Stmt;
+import sootup.core.model.SootMethod;
 import sootup.core.model.SourceType;
 import sootup.core.signatures.MethodSignature;
 import sootup.core.typehierarchy.ViewTypeHierarchy;
@@ -162,6 +166,33 @@ public class GraphBuilder {
         }
     }
 
+    private void addReturnEdges(MethodSignature calledMethodSignature, Stmt callerStmt, BasicBlock<?> callerBlock, String edgeType){
+        Optional maybeMethod = this.globalView.getMethod(calledMethodSignature);
+
+        if(maybeMethod.isPresent()){
+            SootMethod method = (SootMethod) maybeMethod.get();
+            if(method.hasBody()){
+                StmtGraph<?> graph = method.getBody().getStmtGraph();
+                Collection<? extends BasicBlock<?>> blocks;
+                try {
+                    blocks = graph.getBlocksSorted();
+                } catch (Exception e) {
+                    blocks = graph.getBlocks();
+                }
+
+                for(BasicBlock<?> b : blocks){
+                    for(Stmt s : b.getStmts()){
+                        if(s instanceof JReturnStmt || s instanceof JReturnVoidStmt){
+                            addEdge(b, callerBlock, edgeType);
+                            addEdge(s, callerStmt, edgeType);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+
     public void buildGraphs(){
         List<JavaSootClass> classes = new ArrayList<JavaSootClass>(this.localView.getClasses());
 
@@ -190,7 +221,7 @@ public class GraphBuilder {
                     //         counter++;
                     //     }
                     // }
-
+                    
                     boolean firstBlock = true;
                     for(BasicBlock<?> block: blocks){
                         if(this.buildBlockCFG){
@@ -213,11 +244,6 @@ public class GraphBuilder {
                         EquivTo outNode = null;
                         EquivTo inNode;
                         for(Stmt s : block.getStmts()){
-                            if(s.getPositionInfo().getStmtPosition().getFirstLine()!=s.getPositionInfo().getStmtPosition().getLastLine()){
-                                System.out.println("These are not equal");
-                                System.out.println(s.getPositionInfo().getStmtPosition().getFirstLine());
-                                System.out.println(s.getPositionInfo().getStmtPosition().getLastLine());
-                            }
                             nodeToLoc.put(s.hashCode(), aClass.getName().toString() +"|||" + aMethod.getName().toString() + "|||" +s.getPositionInfo().getStmtPosition().getFirstLine());
                             if(this.buildStmtCFG){
                                 inNode = s;
@@ -238,22 +264,10 @@ public class GraphBuilder {
                             if(this.buildCallGraph && s.containsInvokeExpr()){
                                 try{
                                     cga.resolveLocalCall(aMethod, s.getInvokeExpr()).distinct().forEach(sig ->{
-                                            if(buildStmtCFG || buildExpressionGraph){
-                                                if(aClass.toString().contains("test-classes")){
-                                                    addEdge(s, sig, "Test-SCall");
-                                                }
-                                                else{
-                                                    addEdge(s, sig, "SCall");
-                                                }
-                                            }
-                                            if(buildBlockCFG){
-                                                if(aClass.toString().contains("test-classes")){
-                                                    addEdge(block, sig, "Test-BCall");
-                                                }
-                                                else{
-                                                    addEdge(block, sig, "BCall");
-                                                }
-                                            }
+                                            String edgeType = aClass.toString().contains("test-classes") ? "Test-Scall" : "Scall";
+                                            addEdge(s, sig, edgeType);
+                                            addEdge(block, sig, edgeType);
+                                            addReturnEdges(sig, s, block, edgeType);
                                         }
                                     );
                                 }
