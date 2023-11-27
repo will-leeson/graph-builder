@@ -209,24 +209,6 @@ public class GraphBuilder {
                     } catch (Exception e) {
                         blocks = graph.getBlocks();
                     }
-<<<<<<< HEAD
-
-=======
-                    
-                    // if(this.buildCDG && blocks.size() > 1){
-                    //     try{
-                    //         DominanceFinder df = new DominanceFinder(graph);
-                    //     }
-                    //     catch(ArrayIndexOutOfBoundsException e){
-                    //         if(e.getMessage() != null){
-                    //             int val = Integer.parseInt(e.getMessage());
-                    //             badCounter += (val==blocks.size() ? 1 : 0);
-                    //         }
-                    //         counter++;
-                    //     }
-                    // }
-                    
->>>>>>> 462e625c047c40afb1378f86b975c3fc58e0ad9e
                     boolean firstBlock = true;
                     for(BasicBlock<?> block: blocks){
                         if(this.buildBlockCFG){
