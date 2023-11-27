@@ -56,10 +56,10 @@ public class GraphStmtVisitor implements StmtVisitor{
     }
 
     public void caseAssignStmt(JAssignStmt<?, ?> stmt){
-        addEdge(stmt, stmt.getLeftOp(),"EXPR");
-        addEdge(stmt, stmt.getRightOp(),"EXPR");
-        addEdge(stmt.getLeftOp(),stmt,"EXPR");
-        addEdge(stmt.getRightOp(),stmt,"EXPR");
+        addEdge(stmt, stmt.getLeftOp(),"AST");
+        addEdge(stmt, stmt.getRightOp(),"AST");
+        addEdge(stmt.getLeftOp(),stmt,"AST");
+        addEdge(stmt.getRightOp(),stmt,"AST");
 
         addEdge(stmt.getRightOp(), stmt.getLeftOp(), "DATA");
 
@@ -71,18 +71,18 @@ public class GraphStmtVisitor implements StmtVisitor{
     }
 
     public void caseIdentityStmt(JIdentityStmt<?> stmt){
-        addEdge(stmt, stmt.getLeftOp(),"EXPR");
-        addEdge(stmt, stmt.getRightOp(),"EXPR");
+        addEdge(stmt, stmt.getLeftOp(),"AST");
+        addEdge(stmt, stmt.getRightOp(),"AST");
 
-        addEdge(stmt.getLeftOp(), stmt,"EXPR");
-        addEdge(stmt.getRightOp(), stmt,"EXPR");
+        addEdge(stmt.getLeftOp(), stmt,"AST");
+        addEdge(stmt.getRightOp(), stmt,"AST");
 
         stmt.getRightOp().accept(valueVisitor);
     }
 
     public void caseIfStmt(JIfStmt stmt){
-        addEdge(stmt, stmt.getCondition(),"EXPR");
-        addEdge(stmt.getCondition(), stmt,"EXPR");
+        addEdge(stmt, stmt.getCondition(),"AST");
+        addEdge(stmt.getCondition(), stmt,"AST");
         stmt.getCondition().accept(valueVisitor);
     }
 

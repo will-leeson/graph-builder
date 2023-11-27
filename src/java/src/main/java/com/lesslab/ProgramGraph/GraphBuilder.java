@@ -88,6 +88,7 @@ public class GraphBuilder {
     }
 
     public GraphBuilder(String ProjectPath, boolean buildBlockCFG, boolean buildStmtCFG, boolean buildCDG,boolean buildExpressionGraph, boolean buildCallGraph, boolean buildData){
+        System.out.println(ProjectPath);
         AnalysisInputLocation<JavaSootClass> inputLocation =
         new JavaClassPathAnalysisInputLocation(ProjectPath, SourceType.Library);
 
@@ -177,19 +178,6 @@ public class GraphBuilder {
                     } catch (Exception e) {
                         blocks = graph.getBlocks();
                     }
-                    
-                    // if(this.buildCDG && blocks.size() > 1){
-                    //     try{
-                    //         DominanceFinder df = new DominanceFinder(graph);
-                    //     }
-                    //     catch(ArrayIndexOutOfBoundsException e){
-                    //         if(e.getMessage() != null){
-                    //             int val = Integer.parseInt(e.getMessage());
-                    //             badCounter += (val==blocks.size() ? 1 : 0);
-                    //         }
-                    //         counter++;
-                    //     }
-                    // }
 
                     boolean firstBlock = true;
                     for(BasicBlock<?> block: blocks){
@@ -200,24 +188,10 @@ public class GraphBuilder {
                                 firstBlock = false;
                             }
                         }
-                        // if(this.buildCDG && blocks.size() > 1){                            
-                        //     int idx = df.getBlockToIdx().get(block);
-                        //     System.out.println(df.getBlockToIdx());
-                        //     System.out.println();
-                        //     System.out.println(df.getImmediateDominators());
-                        //     int idomIdx = df.getImmediateDominators()[idx];
-                        //     System.out.println(df.getIdxToBlock().get(idomIdx));
-                        //     System.exit(0);
-                        // }
                         boolean first = true;
                         EquivTo outNode = null;
                         EquivTo inNode;
                         for(Stmt s : block.getStmts()){
-                            if(s.getPositionInfo().getStmtPosition().getFirstLine()!=s.getPositionInfo().getStmtPosition().getLastLine()){
-                                System.out.println("These are not equal");
-                                System.out.println(s.getPositionInfo().getStmtPosition().getFirstLine());
-                                System.out.println(s.getPositionInfo().getStmtPosition().getLastLine());
-                            }
                             nodeToLoc.put(s.hashCode(), aClass.getName().toString() +"|||" + aMethod.getName().toString() + "|||" +s.getPositionInfo().getStmtPosition().getFirstLine());
                             if(this.buildStmtCFG){
                                 inNode = s;

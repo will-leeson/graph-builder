@@ -42,10 +42,10 @@ public class GraphValueVisitor implements ValueVisitor  {
     private void addEdge(EquivTo from, EquivTo to){
         outEdges.add(from.hashCode());
         inEdges.add(to.hashCode());
-        edgeTypes.add("VALUE");
+        edgeTypes.add("AST");
         outEdges.add(to.hashCode());
         inEdges.add(from.hashCode());
-        edgeTypes.add("VALUE");
+        edgeTypes.add("AST");
 
         if(!hashToStringRep.containsKey(from.hashCode())){
             hashToStringRep.put(from.hashCode(), from.getClass().getSimpleName().toString());
@@ -58,10 +58,10 @@ public class GraphValueVisitor implements ValueVisitor  {
     private void addEdge(EquivTo object, Type type){
         outEdges.add(type.hashCode());
         inEdges.add(object.hashCode());
-        edgeTypes.add("TYPE");
+        edgeTypes.add("AST");
         outEdges.add(object.hashCode());
         inEdges.add(type.hashCode());
-        edgeTypes.add("TYPE");
+        edgeTypes.add("AST");
 
         if(!hashToStringRep.containsKey(type.hashCode())){
             hashToStringRep.put(type.hashCode(), type.getClass().getSimpleName().toString());
