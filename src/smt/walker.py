@@ -87,6 +87,7 @@ class ASTBuilder(IdentityDagWalker):
 
         parenId = self.get_node_counter(formula, True)
 
+        prevChild = None
         for s in self._get_children(formula):
             # Add only if not memoized already
             childId = self.get_node_counter(s, False)
@@ -97,6 +98,13 @@ class ASTBuilder(IdentityDagWalker):
             self.edges[0].append(childId)
             self.edges[1].append(parenId)
             self.edge_attr.append(1)
+            
+            if parenId == 0 and prevChild is not None:
+                self.edges[0].append(prevChild)
+                self.edges[1].append(childId)
+                self.edge_attr.append(3)
+            
+            prevChild = childId
 
             key = self._get_key(s, **kwargs)
             if key not in self.memoization:
@@ -146,16 +154,16 @@ def main(parser):
     print("writing")
     np.savez_compressed(file[:-5]+".npz", nodes=nodes, edges=edges, edge_attr=edge_attr)
 
-    # graph = nx.DiGraph()
+    graph = nx.DiGraph()
 
-    # for i, node in enumerate(nodes):
-    #     graph.add_node(i, label=op_to_str(np.where(node)[0][0]) if node[-1]!=1 else "UberSymbol")
+    for i, node in enumerate(nodes):
+        graph.add_node(i, label=op_to_str(np.where(node)[0][0]) if node[-1]!=1 else "UberSymbol")
 
-    # for inEdge, outEdge, attr in zip(edges[0], edges[1], edge_attr):
-    #     graph.add_edge(inEdge, outEdge, label=attr)
+    for inEdge, outEdge, attr in zip(edges[0], edges[1], edge_attr):
+        graph.add_edge(inEdge, outEdge, label=attr)
 
 
-    # nx.drawing.nx_pydot.write_dot(graph, "thing.dot")
+    nx.drawing.nx_pydot.write_dot(graph, "thing.dot")
 
 
 
