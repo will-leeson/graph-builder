@@ -242,7 +242,7 @@ public class GraphBuilder {
                             if(this.buildCallGraph && s.containsInvokeExpr()){
                                 try{
                                     cga.resolveLocalCall(aMethod, s.getInvokeExpr()).distinct().forEach(sig ->{
-                                            String edgeType = aClass.toString().contains("test-classes") ? "Test-Scall" : "Scall";
+                                            String edgeType = aClass.toString().contains("test-classes") ? "Test-Call" : "Call";
                                             addEdge(s, sig, edgeType);
                                             addEdge(block, sig, edgeType);
                                             addReturnEdges(sig, s, block, edgeType);
