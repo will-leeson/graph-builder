@@ -126,93 +126,97 @@ class GraphBuilder(TreeWalker):
     def walk_algebraic_constant(self, formula): return self.walk_constant(formula)
 
     def walk_not(self, formula):
-        return self.walk_constant(formula)
+        return self.walk_nary(formula)
 
     def walk_function(self, formula):
-        return self.walk_constant(formula)
+        return self.walk_nary(formula)
 
     def walk_bv_extract(self, formula):
-        return self.walk_constant(formula)
+        return self.walk_nary(formula)
 
     def walk_bv_neg(self, formula):
-        return self.walk_constant(formula)
+        return self.walk_nary(formula)
 
     def walk_bv_ror(self, formula):
-        return self.walk_constant(formula)
+        return self.walk_nary(formula)
 
     def walk_bv_rol(self, formula):
-        return self.walk_constant(formula)
+        return self.walk_nary(formula)
 
     def walk_bv_zext(self, formula):
-        return self.walk_constant(formula)
+        return self.walk_nary(formula)
 
     def walk_bv_sext(self, formula):
-        return self.walk_constant(formula)
+        return self.walk_nary(formula)
 
     def walk_ite(self, formula):
-        return self.walk_constant(formula)
+        return self.walk_nary(formula)
 
     def walk_forall(self, formula):
-        return self.walk_constant(formula)
+        return self.walk_nary(formula)
 
     def walk_exists(self, formula):
-        return self.walk_constant(formula)
+        return self.walk_nary(formula)
 
     def walk_toreal(self, formula):
-        return self.walk_constant(formula)
+        return self.walk_nary(formula)
 
     def walk_str_constant(self, formula):
-        return self.walk_constant(formula)
+        return self.walk_nary(formula)
 
     def walk_str_length(self,formula):
-        return self.walk_constant(formula)
+        return self.walk_nary(formula)
 
     def walk_str_charat(self,formula, **kwargs):
-        return self.walk_constant(formula)
+        return self.walk_nary(formula)
 
     def walk_str_concat(self,formula, **kwargs):
-        return self.walk_constant(formula)
+        return self.walk_nary(formula)
 
     def walk_str_contains(self,formula, **kwargs):
-        return self.walk_constant(formula)
+        return self.walk_nary(formula)
 
     def walk_str_indexof(self,formula, **kwargs):
-        return self.walk_constant(formula)
+        return self.walk_nary(formula)
 
     def walk_str_replace(self,formula, **kwargs):
-        return self.walk_constant(formula)
+        return self.walk_nary(formula)
 
     def walk_str_substr(self,formula, **kwargs):
-        return self.walk_constant(formula)
+        return self.walk_nary(formula)
 
     def walk_str_prefixof(self,formula, **kwargs):
-        return self.walk_constant(formula)
+        return self.walk_nary(formula)
 
     def walk_str_suffixof(self,formula, **kwargs):
-        return self.walk_constant(formula)
+        return self.walk_nary(formula)
 
     def walk_str_to_int(self,formula, **kwargs):
-        return self.walk_constant(formula)
+        return self.walk_nary(formula)
 
     def walk_int_to_str(self,formula, **kwargs):
-        return self.walk_constant(formula)
+        return self.walk_nary(formula)
 
     def walk_array_select(self, formula):
-        return self.walk_constant(formula)
+        return self.walk_nary(formula)
 
     def walk_array_store(self, formula):
-        return self.walk_constant(formula)
+        return self.walk_nary(formula)
 
     def walk_array_value(self, formula):
-        return self.walk_constant(formula)
+        return self.walk_nary(formula)
 
     def walk_bv_tonatural(self, formula):
-        return self.walk_constant(formula)
+        return self.walk_nary(formula)
 
 def main(parser):
     args = parser.parse_args()
+    if os.path.exists(args.out):
+        exit()
+    else:
+        print(args.out)
 
-    file = args.file[0]
+    file = args.file
 
     myParser = SmtLibParser()
     formula = None
@@ -231,8 +235,7 @@ def main(parser):
     edges = np.transpose(np.array(gb.edges))
     edge_attr = np.array(gb.edge_attrs)
 
-    print("writing")
-    np.savez_compressed(file[:-5]+".npz", nodes=nodes, edges=edges, edge_attr=edge_attr)
+    np.savez_compressed(args.out, nodes=nodes, edges=edges, edge_attr=edge_attr)
 
     if args.dot:
         graph = nx.DiGraph()
@@ -249,6 +252,7 @@ def main(parser):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="SMT File -> Pytorch-Geometric Graph")
-    parser.add_argument('file', nargs=1, help="The file to be converted to a graph")
+    parser.add_argument('--file', type=str, help="The file to be converted to a graph")
     parser.add_argument('--dot', action="store_true",help="The file to be converted to a graph")
+    parser.add_argument('--out', type=str,help="The location to save the graph")
     main(parser=parser)
