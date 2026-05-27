@@ -1,15 +1,11 @@
 from pysmt.walkers.tree import TreeWalker
-import pysmt.operators as op
 
-import sys
-from pysmt.walkers.identitydag import IdentityDagWalker
-from pysmt.smtlib.parser import SmtLibParser
+from pysmt.shortcuts import read_smtlib
 from pysmt.operators import op_to_str, ALL_TYPES
 from pysmt.fnode import FNode
 import argparse
 import networkx as nx
 import numpy as np
-from pysmt.exceptions import PysmtTypeError
 
 import os
 
@@ -82,7 +78,6 @@ class GraphBuilder(TreeWalker):
             self.var_to_value_node[name] = value_num
 
     # N-ary ops 
-    def walk_and(self, formula): return self.walk_nary(formula)
     def walk_and(self, formula): return self.walk_nary(formula)
     def walk_or(self, formula): return self.walk_nary(formula)
     def walk_plus(self, formula): return self.walk_nary(formula)
@@ -218,14 +213,7 @@ def main(parser):
 
     file = args.file
 
-    myParser = SmtLibParser()
-    formula = None
-    # try:
-    formula = myParser.get_script(open(file)).get_last_formula()
-    # except PysmtTypeError:
-    #     badfile = open("badfile.txt", 'a')
-    #     badfile.write(file+"\n")
-    #     sys.exit(1)
+    formula = read_smtlib(file)
 
     gb = GraphBuilder()
 
