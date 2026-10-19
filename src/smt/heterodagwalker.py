@@ -412,7 +412,216 @@ def _sanitize_content(file_path):
     content = re.sub(r'\bbvsdiv_i\b', 'bvsdiv', content)
     content = re.sub(r'\bbvsrem_i\b', 'bvsrem', content)
     content = re.sub(r'\bbvsmod_i\b', 'bvsmod', content)
-    return content
+    return _order_definitions(_lower_lambdas(content))
+
+
+_SYMBOL_RE = re.compile(r"\|[^|]*\||[A-Za-z_~!@$%^&*+=<>.?/\-][\w~!@$%^&*+=<>.?/\-']*")
+
+
+def _top_level_commands(content):
+    """Split SMT-LIB text into top-level s-expressions (quoted |symbols| and strings respected)."""
+    cmds, depth, start, i, n = [], 0, None, 0, len(content)
+    special = re.compile(r'[()|";]')
+    while True:
+        m = special.search(content, i)
+        if not m:
+            break
+        c, j = m.group(), m.start()
+        if c == ';':
+            end = content.find('\n', j)
+            i = (end + 1) if end != -1 else n
+            continue
+        if c in '|"':
+            end = content.find(c, j + 1)
+            i = (end + 1) if end != -1 else n
+            continue
+        if c == '(':
+            if depth == 0:
+                start = j
+            depth += 1
+        else:
+            depth -= 1
+            if depth == 0 and start is not None:
+                cmds.append(content[start:j + 1])
+                start = None
+        i = j + 1
+    return cmds
+
+
+_TOKEN_RE = re.compile(r'\(|\)|\|[^|]*\||"(?:[^"]|"")*"|[^\s()|"]+')
+
+
+def _parse_sexpr(text):
+    """Parse one s-expression into nested lists of atom strings (iterative, so
+    nesting depth is unbounded)."""
+    stack = [[]]
+    for tok in _TOKEN_RE.findall(text):
+        if tok == '(':
+            stack.append([])
+        elif tok == ')':
+            node = stack.pop()
+            stack[-1].append(node)
+        else:
+            stack[-1].append(tok)
+    return stack[0][0]
+
+
+def _unparse_sexpr(tree):
+    """Inverse of _parse_sexpr (iterative)."""
+    out, stack = [], [(tree, 0)]
+    while stack:
+        node, k = stack.pop()
+        if not isinstance(node, list):
+            out.append(node)
+            continue
+        if k == 0:
+            out.append('(')
+        if k < len(node):
+            stack.append((node, k + 1))
+            if k > 0:
+                out.append(' ')
+            stack.append((node[k], 0))
+        else:
+            out.append(')')
+    return ''.join(out)
+
+
+def _lower_lambda_tree(tree, typed):
+    """
+    Rewrite, bottom-up and in place:
+      (define-fun f () (-> S1 .. Sn R) (lambda ((p1 S1) .. (pn Sn)) body))
+          -> (define-fun f ((p1 S1) .. (pn Sn)) R body)
+      (@ .. (@ (lambda ((p1 S1) .. (pn Sn)) body) a1) .. an)
+          -> (let ((p1 a1) .. (pn an)) body)
+      (@ .. (@ f a1) .. an), typed[f] == n   -> (f a1 .. an)
+    `typed` maps each function-typed constant to its arity. Applications that
+    can't be rewritten exactly (partial or over-application, unknown head) are
+    left untouched, so curried chains are only rewritten once complete.
+    Returns the new root.
+    """
+    order, stack = [], [(tree, None, None)]
+    while stack:
+        node, parent, idx = stack.pop()
+        order.append((node, parent, idx))
+        for j, child in enumerate(node):
+            if isinstance(child, list):
+                stack.append((child, node, j))
+    root = tree
+    for node, parent, idx in reversed(order):   # children before parents
+        new = node
+        if (len(node) == 5 and node[0] == 'define-fun' and node[2] == []
+                and isinstance(node[3], list) and node[3][:1] == ['->']
+                and isinstance(node[4], list) and node[4][:1] == ['lambda']
+                and len(node[4]) == 3 and len(node[4][1]) == len(node[3]) - 2):
+            new = ['define-fun', node[1], node[4][1], node[3][-1], node[4][2]]
+        elif node[:1] == ['@'] and len(node) == 3:
+            args, head = [], node
+            while isinstance(head, list) and head[:1] == ['@'] and len(head) == 3:
+                args.append(head[2])
+                head = head[1]
+            args.reverse()
+            if (isinstance(head, list) and head[:1] == ['lambda'] and len(head) == 3
+                    and len(head[1]) == len(args)):
+                new = ['let', [[p[0], a] for p, a in zip(head[1], args)], head[2]]
+            elif isinstance(head, str) and typed.get(head) == len(args):
+                new = [head] + args
+        if new is not node:
+            if parent is None:
+                root = new
+            else:
+                parent[idx] = new
+    return root
+
+
+def _lower_lambdas(content):
+    """
+    CVC5_PRE_SOLVE_DUMP (cvc5-1.2.1) writes some definitions as function-typed
+    constants bound to lambdas, and applies lambdas inline with `@`. pysmt has
+    no function sorts or lambda ("Unexpected token '->' in define-fun"), so
+    rewrite them to the equivalent first-order forms it does parse: a
+    parameterised define-fun, and `let` for fully-applied lambdas (see
+    _lower_lambda_tree). Same formula; files without lambda/@ are returned
+    unchanged, and only commands containing them are re-printed.
+    """
+    if '(lambda' not in content and '(@ ' not in content:
+        return content
+    # Collected up front: CVC5 sorts define-funs by name, so `(@ f a)` can come
+    # before f's own definition. A definition that turns out not to match the
+    # rewritable shape keeps its `->` sort, so the parse still fails loudly.
+    typed = {}
+    for m in re.finditer(r'\(define-fun (\|[^|]*\||\S+) \(\) (\(->)', content):
+        # Arity = number of sorts in (-> S1 .. Sn R) minus the result sort.
+        depth, n_children, i = 0, 0, m.start(2)
+        for tok in _TOKEN_RE.finditer(content, i):
+            t = tok.group()
+            if t == '(':
+                depth += 1
+                if depth == 2:
+                    n_children += 1
+            elif t == ')':
+                depth -= 1
+                if depth == 0:
+                    break
+            elif depth == 1 and t != '->':
+                n_children += 1
+        typed[m.group(1)] = n_children - 1
+    out = []
+    for cmd in _top_level_commands(content):
+        if '(lambda' in cmd or '(@ ' in cmd or '(->' in cmd:
+            cmd = _unparse_sexpr(_lower_lambda_tree(_parse_sexpr(cmd), typed))
+        out.append(cmd)
+    return '\n'.join(out) + '\n'
+
+
+def _order_definitions(content):
+    """
+    CVC5_PRE_SOLVE_DUMP writes define-funs sorted by name, so with scrambler
+    names x1..xN, "x1242" can come before an "x788" it uses. pysmt can't parse
+    a forward reference ("'str' object has no attribute 'args'"). If (and only
+    if) a define-fun uses one defined later, re-emit the file as: every
+    non-define command before the first assert (set-*, declare-*) in order,
+    then the define-funs topologically sorted (stable, file order otherwise),
+    then the rest in order. Same formula, different parse order; files without
+    a forward reference are returned unchanged.
+    """
+    if '(define-fun' not in content:
+        return content
+    cmds = _top_level_commands(content)
+    head = re.compile(r'\(\s*define-fun\s+(\|[^|]*\||\S+)')
+    defs = {}
+    for k, cmd in enumerate(cmds):
+        m = head.match(cmd)
+        if m:
+            defs[m.group(1)] = k
+    deps = {k: {defs[s] for s in _SYMBOL_RE.findall(cmd[cmd.index(name) + len(name):])
+                if s in defs and defs[s] != k}
+            for name, k in defs.items() for cmd in (cmds[k],)}
+    if not any(d > k for k, ds in deps.items() for d in ds):
+        return content
+
+    order, done, state = [], set(), {}
+    for k in sorted(deps):
+        stack = [(k, iter(sorted(deps[k])))]
+        if k in done:
+            continue
+        state[k] = 1
+        while stack:
+            node, it = stack[-1]
+            nxt = next((d for d in it if d not in done), None)
+            if nxt is None:
+                stack.pop()
+                done.add(node)
+                order.append(node)
+            elif state.get(nxt) == 1:
+                raise ValueError("cyclic define-fun dependencies")
+            else:
+                state[nxt] = 1
+                stack.append((nxt, iter(sorted(deps[nxt]))))
+
+    first_assert = next((k for k, c in enumerate(cmds) if re.match(r'\(\s*assert\b', c)), len(cmds))
+    pre  = [c for k, c in enumerate(cmds) if k < first_assert and k not in deps]
+    post = [c for k, c in enumerate(cmds) if k >= first_assert and k not in deps]
+    return "\n".join(pre + [cmds[k] for k in order] + post) + "\n"
 
 
 def _build_script(content):
